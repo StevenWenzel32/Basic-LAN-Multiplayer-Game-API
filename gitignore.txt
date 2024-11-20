@@ -1,0 +1,5 @@
+#ignore the nfs files made in mobaxterm
+*.nfs*
+.nfs*
+*.nfs
+.*
