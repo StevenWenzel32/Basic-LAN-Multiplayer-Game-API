@@ -1,3 +1,6 @@
+// This holds the generic game networking protocols -- at least for a two player game
+
+// go through and get rid of the includes that aren't needed
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -20,6 +23,50 @@
 #include <array>
 
 using namespace std;
+
+// need a list of games being played
+// need a list of games that need another player
+
+// need a list of players avalible/not in a game/in lobby
+// need a list of players currently playing/unavailable
+
+// announces that you are avaliable to play, carries contact info and puts the player into the avalible player list
+// maybe add a player username
+void Register(){
+
+}
+
+// list of avialbe games to join
+// query the server or broadcast to LAN -- pick one
+// can possibly show who is playing if using usernames
+void ListGames(){
+
+}
+
+// user starts a game and annoucnes that it is free to join
+// if using usernames could have the game show who is playing/hosting
+// has the contact info
+void CreateGame(){
+
+}
+
+// allows the user to join the game
+// contact info, other needed info
+void JoinGame(){
+
+}
+
+// exit the game gracefully
+void ExitGame(){
+    // remove the player from the game
+    // remove the player from the playing list
+    // send the other player a message
+}
+
+// remove the player from the list of possible/available players
+void Unregister(){
+
+}
 
 // send get request to a web server
 int main (int argc, char* argv[]) {
@@ -61,4 +108,4 @@ int main (int argc, char* argv[]) {
     freeaddrinfo(servinfo);
 
     return 0;
-}
+} 
