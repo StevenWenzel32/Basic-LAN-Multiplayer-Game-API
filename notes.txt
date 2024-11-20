@@ -1,0 +1,38 @@
+These are notes taken throughout the quarter on how to implement the networking for my Knight and Slime Platformer
+
+KNIGHT AND SLIME
+	- the messages in the application layer protocol
+		- Types of messages - sub catagories?
+			- setup messages
+			- player messages
+				- audio tag
+			- environment messages - perma changes like switches -- semi-perma changes like buttons? -- UI displays?
+		- Message Syntax 
+			- type of msg 
+		- Message Semantics
+			- ends with ?????????????????
+		- Message Rules
+		- check if there are any open multiplayer game protocols 
+			- ITF - has lists of open protocols
+	- needs low delay and needs relaible timing - 10's msec
+	- needs a minimum amount of throughput - Kbps+
+	- is loss tolerant
+	- will use combinations of TCP and UDP for different types of messages
+		- UDP: use for video or audio like things, also use for states that are updated often 
+				- player movement 
+				- audio
+				- object movement: boxes, doors, buttons *************????????????
+		- TCP: use for things not updated often, UI menus, permant environment changes
+			- use for UI things like menus, stores, settings 
+			- permanet environment changes: obstacles destoryed 
+			- math calculations: timers, gem count, score, player stats (current slime liquid)
+	- no need to worry about security 
+	- usually people end up using a mix of p2p and client server 
+	- lots of games do use udp just to show what is happening with the other player
+	- need to find a balance between utilzation and latency - porbably best to focus on latency 
+	
+	PLAYER TRACKING
+	- how players connect
+		- send a boradcast message out on the local network from the server to check for players who want to connect
+		- computers listening on broadcast will record the IP and MAC of the server and respond in a certain way 
+			- use a file they download or something to connect??
