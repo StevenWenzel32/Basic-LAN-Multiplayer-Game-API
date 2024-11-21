@@ -1,5 +1,5 @@
 // this holds the protocols and code to run the knight/host side of the platformer game Knight and Slime
-// these are the portocols to run the 2 players are connected
+// these are the portocols to run once the 2 players are connected
 
 // go through and get rid of the includes that aren't needed
 #include <stdio.h>
