@@ -1,6 +1,8 @@
-// This is basically the lobby -- handles the server side of making the player connections
-#ifndef SERVER_HPP
-#define SERVER_HPP
+// this holds the protocols and code to run the Slime/Client side of the platformer game: Knight and Slime
+// these are the portocols to run once the 2 players are connected
+
+#ifndef SLIME_CLIENT_HPP
+#define SLIME_CLIENT_HPP
 
 // go through and get rid of the includes that aren't needed
 #include <stdio.h>
@@ -17,18 +19,15 @@
 #include <netdb.h>        // gethostbyname
 #include <sstream>        // for stringstream stuff
 #include <random>         // for random #
+#include <chrono>         // for steady_clock and timer stuff
 #include <queue>          // for queue, duh
 #include <cerrno>
 #include <cstring>        // for strerror
 #include <vector>
 #include <array>
-#include <unordered_map>
-#include <signal.h>       // for the shutdown signal
-#include <fcntl.h>        // for fcntl -- to set non-blocking
 
 // my files
-// for the socket related functions and basic msg sends and recieves
-#include "basicNetworking.hpp"
+#include "player.hpp"
 
 
 

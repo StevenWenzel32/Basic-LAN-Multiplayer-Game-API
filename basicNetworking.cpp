@@ -1,36 +1,7 @@
-// this holds the protocols and code to run the knight/host side of the platformer game Knight and Slime
-// these are the portocols to run once the 2 players are connected
-
-// go through and get rid of the includes that aren't needed
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <sys/types.h>    // socket, bind
-#include <sys/socket.h>   // socket, bind, listen, inet_ntoa
-#include <unistd.h>       // read, write, close
-#include <strings.h>      // bzero
-#include <netinet/tcp.h>  // SO_REUSEADDR
-#include <string.h>       // memset
-#include <errno.h>        // errno
-#include <fstream>        // ofstream for file creation
-#include <netdb.h>        // gethostbyname
-#include <sstream>        // for stringstream stuff
-#include <random>         // for random #
-#include <chrono>         // for steady_clock and timer stuff
-#include <queue>          // for queue, duh
-#include <cerrno>
-#include <cstring>        // for strerror
-#include <vector>
-#include <array>
+// These are the basic networking and socket related functions and basic msg sends and recieves
 
 // my files
-#include "player.hpp"
-
-using namespace std;
-
-class KnightHost : public Player{
-
-};
+#include "basicNetworking.hpp"
 
 // handle making the socket struct for listening -- makes a UDP socket
 // can later add in params to change the family and socktype and optional flags and port #
@@ -138,61 +109,4 @@ int readAckNoBlock(int clientSd, struct addrinfo* servinfo){
             return ackNum;
         }
     return -4;
-}
-
-// manage the game world and the host player
-int main (int argc, char* argv[]) {
-    // create/launch the level
-    
-    // while loop 
-        // continually manage the host/knight players positions and actions
-        // contnually check for updates from the client/slime player
-
-    // while loop when they are outside a level - until the host player disconnects
-
-    return 0;
-} 
-// connect to the server, connect to another player, disconnect from the server
-// check for messages from the server 
-int main (int argc, char* argv[]) {
-    // check that the command line the right # of params
-    if (argc < 4){
-        cerr << "Error: Not enough parameters passed in. Usage: " << argv[0] << " <PORT>, <Method>, <Host/URL>\n";
-        return 1;
-    }
-
-    // params passed in through command line
-    string port = argv[1];
-    string method = argv[2];
-    string url = argv[3];
-
-    // parse the input
-    pair<string, string> hostParse = parseHost(url);
-
-    // build
-    string msg = buildRequest(method, hostParse.first, hostParse.second);
-
-    // make the socket structs and error check
-    // pass in serverIP/domain -- getaddrinfo does the DNS lookup for us, how nice!
-    struct addrinfo* servinfo = makeGetaddrinfo(hostParse.first, port);
-
-    // make the socket
-    int clientSd = makeSocket(servinfo);
-
-    // connect the socket to the server
-    connectSocket(clientSd, servinfo);
-
-    // ensure all the data in the msg is sent
-    sendAllData(clientSd, msg);
-
-    // recieve the server response
-    string reply = readResponse(clientSd);
-
-    // process server response
-    processResponse(reply);
-    
-    // call that handles error checks in other function
-    closeSocket(clientSd);
-
-    return 0;
 }

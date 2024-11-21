@@ -4,8 +4,29 @@
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
+// go through and get rid of the includes that aren't needed
 // default librairies 
 #include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <sys/types.h>    // socket, bind
+#include <sys/socket.h>   // socket, bind, listen, inet_ntoa
+#include <unistd.h>       // read, write, close
+#include <strings.h>      // bzero
+#include <netinet/tcp.h>  // SO_REUSEADDR
+#include <string.h>       // memset
+#include <errno.h>        // errno
+#include <fstream>        // ofstream for file creation
+#include <netdb.h>        // gethostbyname
+#include <sstream>        // for stringstream stuff
+#include <random>         // for random #
+#include <chrono>         // for steady_clock and timer stuff
+#include <queue>          // for queue, duh
+#include <cerrno>
+#include <cstring>        // for strerror
+#include <vector>
+#include <array>
 
 // my files
 // for the socket related functions and basic msg sends and recieves
