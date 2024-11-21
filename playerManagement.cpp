@@ -24,16 +24,19 @@
 
 using namespace std;
 
+// need a list of players avalible/not in a game/in lobby
+// expecting around 50 players - class size is less than 45
+
+// need a list of players currently playing/unavailable
+
 // need a list of games being played
 // need a list of games that need another player
-
-// need a list of players avalible/not in a game/in lobby
-// need a list of players currently playing/unavailable
 
 // announces that you are avaliable to play, carries contact info and puts the player into the avalible player list
 // maybe add a player username
 void Register(){
-
+    // get the player username - if using them
+    // store the player and their contact info into an avlaaible player list
 }
 
 // list of avialbe games to join
