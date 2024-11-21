@@ -23,6 +23,8 @@
 #include <array>
 
 using namespace std;
+int playerId;
+int currentGameId;
 
 // announces that you are avaliable to play, carries contact info and puts the player into the avalible player list
 // maybe add a player username
@@ -32,6 +34,7 @@ void Register(){
     // get the player port for the game???
     // send msg to the server with the player info
     registerMsg();
+    // maybe grab the response and player id here
 }
 
 // get a list of avaiable games to join
@@ -39,41 +42,29 @@ void Register(){
 // can possibly show who is playing if using usernames
 void ListGames(){
     // send a request for the list of games to the server
-    gameListMsg();
+    gameListMsg(playerId);
 }
 
-// send the server my ip and tell it to make a game with me as the host
-void CreateGame(struct player host){
-    // make the new game
-    struct game newGame;
-    // give id
-    newGame.id = avaliableGames.size() + 1;
-    // fill in host
-    newGame.host = host;
-    // update player count
-    newGame.players = 1;
-    // put into list of games
-    avaliableGames.push_back(newGame);
+// send the server my player id and tell it to make a game with me as the host
+void CreateGame(){
+    // send the server the playerId
+    createGameMsg(playerId);
 }
 
-// allows the user to join the game
-// contact info, other needed info
-void JoinGame(){
-    // send the host connection details to the client
-    // notify host of joining player
-    // remove the player from the list of available players
-    Unregister();
+// tell the server to let me join this game
+void JoinGame(int gameId){
+    // send the playerId and gameId to the server
+    joinGameMsg(playerId, gameId);
 }
 
-// exit the game gracefully
+// send playerId and game Id to the server to have me removed from the game
 void ExitGame(){
-    // remove the player from the game
-    // put the player back into the available players list
-    Register();
-    // send the other player a message
+    // send msg
+    exitGameMsg(playerId, currentGameId);
 }
 
-// remove the player from the list of possible/available players
+// tell server to remove me from list of players
 void Unregister(){
-
+    // send server my id
+    unregisterMsg(playerId);
 }

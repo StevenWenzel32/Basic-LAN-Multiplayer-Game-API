@@ -374,7 +374,7 @@ void Register(string username, int ip, unsigned int port){
     // get the players port
     newPlayer.port = port;
     // put the player into the players list
-    players.push_back(newPlayer);
+    players.emplace(newPlayer.id, newPlayer);
 
     // send a success message to the player with their player ID
     registerSuccessMsg(newPlayer.id);
@@ -383,55 +383,96 @@ void Register(string username, int ip, unsigned int port){
 // list of avialbe games to join
 // query the server or broadcast to LAN -- pick one
 // can possibly show who is playing if using usernames
-void ListGames(){
+void ListGames(int playerId){
     // start of message
     string start = "Game List: \n";
     string list = "" + start;
     // go through all the games in the avaliable games list and display them
     for(int i = 0; i < avaliableGames.size(); i++){
         // print the game stats -- later store in var to try and integrate with UI
-        list += "Game ID: " + avaliableGames[i].id + ", Host: " avaliableGames[i].host + ", Players: " << avaliableGames[i].players + "/2\n";
+        list += "Game ID: " + avaliableGames.at(i).id + ", Host: " avaliableGames.at(i).host + ", Players: " << avaliableGames.at(i).players + "/2\n";
     }
     // send the list to the player all at once -- or perhaps in pieces in the loop
-    sendMsg(sd, list, servinfo);
+    sendGameListMsg(list, playerId);
 }
 
 // user starts a game and annoucnes that it is free to join
 // if using usernames could have the game show who is playing/hosting
 // has the contact info
-void CreateGame(struct player host){
+void CreateGame(int playerId){
     // make the new game
     struct game newGame;
-    // give id
-    newGame.id = avaliableGames.size() + 1;
+    // up the game count 
+    gameCounter++;
+    // give the game an id
+    newGame.id = gameCounter;
     // fill in host
-    newGame.host = host;
+    newGame.host = players.at(playerId);
     // update player count
     newGame.players = 1;
     // put into list of games
-    avaliableGames.push_back(newGame);
+    avaliableGames.emplace(newGame.id, newGame);
+
+    // create the announcement
+    string announce = "Player: " + playerId + ", has started a game! Check use ListGames() to take a look\n";
+    // send anouncement to all connected players
+    sendAnouncement(announce);
 }
 
-// allows the user to join the game
-// contact info, other needed info
-void JoinGame(){
+// puts the player into the game
+void JoinGame(int playerId, int gameId){
+    // find the game and its host
+    struct player host = avaliableGames.at(gameId).host;
+    // update the player count in the game
+    avaliableGames.at(gameId).players++;
     // send the host connection details to the client
+    sendHostInfo(host, playerId);
+    // grab the game 
+    struct game game = avaliableGames.at(gameId);
+    // take game out of avaliable list
+    avaliableGames.erase(gameId);
+    // put game into the full list
+    fullGames.emplace(gameId, game);
     // notify host of joining player
-    // remove the player from the list of available players
-    Unregister();
+    playerJoinMsg(playerId, host);
 }
 
 // exit the game gracefully
-void ExitGame(){
-    // remove the player from the game
-    // put the player back into the available players list
-    Register();
-    // send the other player a message
+void ExitGame(int playerId, int gameId){
+    // grab the game
+    struct game current = avaliableGames.at(gameId);
+    // grab the host
+    struct player host = current.host;
+    // grab the client 
+    struct player client = current.client;
+    // check if the player is the host
+    if (playerId == host.id){
+        // send msg that the host has left to the client
+        playerLeftMsg(playerId, client);
+        // disconnect the host from the client
+        // *****************
+        // delete the game since host left
+        fullGames.erase(gameId);
+    } else {
+        // send msg to the host that the client has left
+        playerLeftMsg(playerId, host);
+        // disconnect the client from the host
+        // ************
+        // remove the game from the full list
+        fullGames.erase(gameId);
+        // mark the client as empty
+        current.client = nullptr;
+        // put the game back into available games
+        avaliableGames.emplace(gameId, current);
+    }
 }
 
 // remove the player from the list of possible/available players
-void Unregister(){
-
+void Unregister(int playerId){
+    // notify the player they are being unregistered
+    unregisteredMsg();
+    // remove the player from the list 
+    players.erase(playerId);
 }
 
 // manages the player: joining, hosting, and leaving
