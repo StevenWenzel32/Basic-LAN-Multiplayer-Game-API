@@ -22,19 +22,23 @@
 #include <vector>
 #include <array>
 
+// my files
+#include "player.hpp"
+
 using namespace std;
-int playerId;
-int currentGameId;
 
 // announces that you are avaliable to play, carries contact info and puts the player into the avalible player list
 // maybe add a player username
 void Register(){
     // get the player username
+    string username =;
     // get the player ip 
+    int ip = ;
     // get the player port for the game???
+    unsigned int port = ;
     // send msg to the server with the player info
-    registerMsg();
-    // maybe grab the response and player id here
+    registerMsg(username, ip, port);
+    // maybe grab the response and player id here ***********
 }
 
 // get a list of avaiable games to join
@@ -49,22 +53,29 @@ void ListGames(){
 void CreateGame(){
     // send the server the playerId
     createGameMsg(playerId);
+    // maybe grab the response and game id here ********
 }
 
 // tell the server to let me join this game
 void JoinGame(int gameId){
     // send the playerId and gameId to the server
     joinGameMsg(playerId, gameId);
+    // update the currentGameId
+    currentGameId = gameId;
 }
 
 // send playerId and game Id to the server to have me removed from the game
 void ExitGame(){
     // send msg
     exitGameMsg(playerId, currentGameId);
+    // reset game id
+    currentGameId = 0;
 }
 
 // tell server to remove me from list of players
 void Unregister(){
     // send server my id
     unregisterMsg(playerId);
+    // reset playerId
+    playerId = 0;
 }
