@@ -66,8 +66,11 @@ void sendUdpMsg(int sd, char message[], struct addrinfo *servinfo);
 void sendTcpMsg(int sd, char message[]);
 
 // msg receiving
-// recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response
-int receiveReliableUDP(int clientSd, struct addrinfo* servinfo);
-
+// recieve a UDP msg, reliable delivery, returns the msg as char[] -- does not wait for a response/non blocking
+char* receiveReliableUdp(int clientSd, struct addrinfo* servinfo);
+// receive a UDP msg, returns the msg as char[] -- does not wait for a response/non blocking
+char* receiveUdp(int clientSd, struct addrinfo* servinfo);
+// receive a TCP msg, returns the msg as char[]
+char* receiveTcp(int sd);
 
 #endif
