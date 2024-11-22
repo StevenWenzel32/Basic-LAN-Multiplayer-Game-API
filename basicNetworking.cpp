@@ -164,22 +164,41 @@ void connectSocket(int clientSd, struct addrinfo* servinfo){
     freeaddrinfo(servinfo);
 }
 
-
-
-
-
 // types of sending and recieving below here
 
-// send a simple UDP msg as int[]
-void sendMsg(int sd, int message[], struct addrinfo *servinfo){
+// send a UDP msg as char[]
+void sendUdpMsg(int sd, char message[], struct addrinfo *servinfo){
     int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
     if (bytes_sent == -1){
-        cerr << "Problem with simple send" << endl;
+        cerr << "Problem with UDP send" << endl;
     }
 }
 
-// recieve and return the ackNum from server without waiting for a response - used for sliding window
-int readAckNoBlock(int clientSd, struct addrinfo* servinfo){
+// send a TCP msg as char[] 
+void sendTcpMsg(int sd, char message[]){
+    // the total bytes sent
+    int total = 0;
+    // total bytes to send
+    int bytes = message.size() * sizeof(char);
+    // in case of partial sends, send until all bytes are sent -- only needed for tcp
+    while (total < bytes){
+        int bytes_sent = send(sd, message + total, bytes - total, 0);
+        if (bytes_sent == -1){
+            cerr << "Problem with TCP send" << endl;
+            break;
+        }
+        total += bytes_sent;
+    }
+}
+
+
+
+
+
+
+
+// recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking **********
+int receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
     // "buffer" for reading in and returning the server ackNum
     int ackNum = -1;
     int nRead = 0;
@@ -202,44 +221,68 @@ int readAckNoBlock(int clientSd, struct addrinfo* servinfo){
     return -4;
 }
 
-// send a simple UDP msg as int[] -- how to send msgs????
-// ****************
-void sendMsg(int sd, int message[], struct addrinfo *servinfo){
-    int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-    if (bytes_sent == -1){
-        cerr << "Problem with simple send" << endl;
-    }
-}
-
-// recieve msg, non blocking
-// ***************
-int recieveMsg(int clientSd, struct addrinfo* servinfo){
-    // "buffer" for reading in and returning the server ackNum
-    int ackNum = -1;
-    int nRead = 0;
-    nRead = recvfrom(clientSd, &ackNum, sizeof(int), MSG_DONTWAIT, servinfo->ai_addr, &(servinfo->ai_addrlen));
-        if (nRead == -1){
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // do nothing simply nothing to read yet
-                ackNum = -1;
-            } else {
-                cerr << "Error reading from socket: clientSd = " << clientSd << endl;
-                ackNum = -2;
+// read the msg from the client and feed into the buffer ie: message -- for UDP
+int readMsg(int sd, struct addrinfo* servinfo){
+    int messageBuf[BUFFER_SIZE] = {0};
+    // recieve the message into the msg[] array and make sure it was read correctly
+            int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
+            if (nRead == -1){
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    // do nothing simply nothing to read yet
+                    return -1;
+                } else {
+                    cerr << "Error reading from socket: SD = " << sd << endl; 
+                    return -2;
+                }
+            } else if (nRead == 0) {
+                cerr << "Client closed the connection" << endl;
+                return -3;
             }
-        } else if (nRead == 0) {
-            cerr << "Server closed the connection" << endl;
-            ackNum = -3;
-        } else {
-// cout << "CLIENT Recieved via non blocking read - AckNum = " << ackNum << endl;
-            return ackNum;
-        }
+            return messageBuf[0];
     return -4;
 }
 
-// send a simple UDP msg as int[]
-void sendMsg(int sd, int message[], struct addrinfo *servinfo){
-    int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-    if (bytes_sent == -1){
-        cerr << "Problem with simple send" << endl;
+// read the request from the client - tcp
+string readRequest(int sd){
+    // string to hold and return the request
+    string request;
+    // "buffer" for reading in the server response
+    char buffer[BUFFER_SIZE];
+    while (true){
+        int nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
+        if (nRead == -1){
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+            return ""; 
+        } else if (nRead == 0) {
+            cerr << "Client closed the connection" << endl;
+            break;
+        } 
+        // null terminate th buffer to help other functions work right
+        buffer[nRead] = '\0';
+        // add what is read to the request
+        request.append(buffer);
+
+        // check for the end of the request and exit if found -- means we got the whole message
+        if (request.find("\r\n\r\n") != string::npos){
+            break;
+        }
     }
+    return request;
+}
+
+// recieve the responses from the server - tcp
+string readResponse(int clientSd){
+    // string to hold and return the response
+    string reply;
+    // "buffer" for reading in the server response
+    char buffer[BUFFER_SIZE];
+    int nRead = 0;
+    while ((nRead = recv(clientSd, &buffer, BUFFER_SIZE, 0)) > 0){
+        if (nRead == -1){
+            cerr << "Error reading from socket: clientSd - " << clientSd << endl;  
+            break;
+        }
+        reply.append(buffer, nRead);
+    }
+    return reply;
 }

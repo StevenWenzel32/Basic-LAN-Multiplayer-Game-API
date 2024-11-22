@@ -28,6 +28,7 @@
 
 using namespace std;
 
+// making addrinfo
 // make a addrinfo for listening using - server side
 struct addrinfo* makeAddrinfo(string type, int port);
 // make a addrinfo for socket structs - client side
@@ -36,9 +37,9 @@ struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port)
 // make a socket for any purpose as set in the makeAddrinfo funcs
 int makeSocket(struct addrinfo* servinfo);
 
+//socket settings
 // make the sd non blocking -- curenntly only seems useful for listening sockets
 void setNonblocking(int serverSd);
-
 // make the socket reusable after discconnect - usually server side
 void setSocketReuse(int serverSd);
 
@@ -57,5 +58,16 @@ void connectSocket(int clientSd, struct addrinfo* servinfo);
 
 // ends the connection
 void closeSocket(int sd);
+
+// msg sending
+// send a UDP msg as char[]
+void sendUdpMsg(int sd, char message[], struct addrinfo *servinfo);
+// send a TCP msg as char[] 
+void sendTcpMsg(int sd, char message[]);
+
+// msg receiving
+// recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response
+int receiveReliableUDP(int clientSd, struct addrinfo* servinfo);
+
 
 #endif
