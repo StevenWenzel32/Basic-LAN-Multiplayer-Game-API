@@ -4,62 +4,6 @@
 // my files
 #include "slimeClient.hpp"
 
-// handle making the socket structs
-// can later add in params to change the family and scoktype
-struct addrinfo* makeGetaddrinfo(const char* serverIp, const char* port){
-    // for checking the return of getaddrinfo
-    int status;
-    // holds the info for the client address
-    struct addrinfo client_addr;
-    // points to the results that are in a linked list - is returned
-    struct addrinfo *servinfo; 
-    
-    // create the struct and address info
-    // make sure the struct is empty
-    memset(&client_addr, 0, sizeof client_addr);
-    // doesn't matter if its ipv4 or ipv6
-    client_addr.ai_family = AF_UNSPEC;
-    // tcp stream sockets
-    client_addr.ai_socktype = SOCK_DGRAM;
-    
-    // getaddrinfo with error check
-    if ((status = getaddrinfo(serverIp, port, &client_addr, &servinfo)) != 0 ) {
-        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-        exit(1);
-    }
-    
-    return servinfo;
-}
-
-// make the socket and do error checks, and return the Sd
-int makeSocket(struct addrinfo* servinfo){
-    // open a stream-oriented socket with the internet address family
-    int clientSd = socket(servinfo->ai_family, servinfo->ai_socktype, 0);
-    // check for error
-    if(clientSd == -1){
-        cerr << "ERROR: Failed to make socket" << endl;
-        exit(1);
-    }
-    
-    return clientSd;
-}
-
-// close the socket and check for errors
-void closeSocket(int sd){
-    int bye = close(sd);
-    if (bye == -1){
-        cerr << "Error closing socket" << endl;
-    }
-}
-
-// send a simple UDP msg as int[]
-void sendMsg(int sd, int message[], struct addrinfo *servinfo){
-    int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-    if (bytes_sent == -1){
-        cerr << "Problem with simple send" << endl;
-    }
-}
-
 // recieve and return the ackNum from server without waiting for a response - used for sliding window
 int readAckNoBlock(int clientSd, struct addrinfo* servinfo){
     // "buffer" for reading in and returning the server ackNum

@@ -40,10 +40,7 @@ unordered_map<int, Game> avaliableGames;
 // counter to create game ids
 int gameCounter = 1;
 
-// port to use/ listen on
-#define PORT "2087"
-// # of connection requests for the server to listen to at a time, used in listen call
-#define BACKLOG 50
+
 
 // holds the threads to ensure proper shutdown later on 
 vector<pthread_t> threads; 
@@ -63,127 +60,6 @@ void signalHandler(int signum) {
     shutdown_flag = 1;
 }
 
-// handle making the socket struct for listening -- makes a UDP socket
-// can later add in params to change the family and socktype and optional flags and port #
-struct addrinfo* makeGetaddrinfo(){
-    // for checking the return of getaddrinfo
-    int status;
-    // holds the info for the server address
-    struct addrinfo server_addr;
-    // points to the results that are in a linked list - is returned
-    struct addrinfo *servinfo; 
-    
-    // create the struct and address info
-    // make sure the struct is empty
-    memset(&server_addr, 0, sizeof(server_addr));
-    // doesn't matter if its ipv4 or ipv6
-    server_addr.ai_family = AF_UNSPEC;
-    // tcp stream sockets
-    server_addr.ai_socktype = SOCK_STREAM;
-    // fill in my IP for me 
-    server_addr.ai_flags = AI_PASSIVE;
-
-    // getaddrinfo and error check in one -- doesn't need an IP/host because this is for listening
-    if ((status = getaddrinfo(NULL, PORT, &server_addr, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-        exit(1);
-    }
-    
-    return servinfo;
-}
-
-// make the listening socket, make it non-blocking, and do error checks, and return the Sd
-int makeListeningSocket(struct addrinfo* servinfo){
-    // open a stream-oriented socket with the internet address family
-    int serverSd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-    // check if the socket call had an error
-    if (serverSd == -1) {
-        cerr << "error making the socket: serverSd - " << serverSd << endl;
-    }
-
-    // get the current flags
-    int flags = fcntl(serverSd, F_GETFL, 0);
-    // turn on the non-blocking flag
-    fcntl(serverSd, F_SETFL, flags | O_NONBLOCK); 
-
-    return serverSd;
-}
-
-// set the socket reuse function to help free up unused sockets and ports
-void setSocketReuse(int serverSd){
-    // Enable socket reuse without waiting for the OS to recycle it
-    // set the so-reuseaddr option
-    const int on = 1;
-    int success = setsockopt(serverSd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int));
-    // check if the option call failed
-    if (success == -1) {
-        cerr << "Error setting the socket reuse option: serverSd - " << serverSd << endl;
-    }
-}
-
-// bind the socket
-void bindSocket(int serverSd, struct addrinfo* servinfo){
-    // Bind the socket to the port we passed into getaddrinfo
-    int binding = bind(serverSd, servinfo->ai_addr, servinfo->ai_addrlen);
-    // check if the bind had an error
-    if (binding == -1) {
-        cerr << "Error binding socket: serverSd - " << serverSd << " to port: " << PORT << endl;
-    }
-}
-
-// listen on the socket
-void listening(int serverSd, int backlog){
-    // instruct the OS to Listen to up to N connection requests on the socket
-    int listening = listen(serverSd, backlog);
-    // check if listen has an error
-    if (listening == -1) {
-        cerr << "Error listening on socket: serverSd - " << serverSd << endl;
-    } else {
-        cout << "Server: Waiting for connections..." << endl;
-    }
-}
-
-// close the socket and check for errors
-void closeSocket(int sd){
-    int bye = close(sd);
-    if (bye == -1){
-        cerr << "Error closing socket" << endl;
-    }
-}
-
-// send a simple UDP msg as int[] -- how to send msgs????
-// ****************
-void sendMsg(int sd, int message[], struct addrinfo *servinfo){
-    int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-    if (bytes_sent == -1){
-        cerr << "Problem with simple send" << endl;
-    }
-}
-
-// recieve msg, non blocking
-// ***************
-int recieveMsg(int clientSd, struct addrinfo* servinfo){
-    // "buffer" for reading in and returning the server ackNum
-    int ackNum = -1;
-    int nRead = 0;
-    nRead = recvfrom(clientSd, &ackNum, sizeof(int), MSG_DONTWAIT, servinfo->ai_addr, &(servinfo->ai_addrlen));
-        if (nRead == -1){
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // do nothing simply nothing to read yet
-                ackNum = -1;
-            } else {
-                cerr << "Error reading from socket: clientSd = " << clientSd << endl;
-                ackNum = -2;
-            }
-        } else if (nRead == 0) {
-            cerr << "Server closed the connection" << endl;
-            ackNum = -3;
-        } else {
-// cout << "CLIENT Recieved via non blocking read - AckNum = " << ackNum << endl;
-            return ackNum;
-        }
-    return -4;
-}
 // combine with above
 // read the request from the client
 string readRequest(int sd){
@@ -313,27 +189,6 @@ pthread_t makeThread(int sd, int reps){
     }
 
     return new_thread;
-}
-
-int acceptConnection(int serverSd){
-    // connector's address information can be either IPv4 or IPv6
-    struct sockaddr_storage their_addr;
-    // size of clients address
-    socklen_t their_AddrSize = sizeof(their_addr);
-    // Accept the connection as a new socket
-    int newSd = accept(serverSd, (struct sockaddr *)&their_addr, &their_AddrSize);
-    // check if the connection was made properly
-    if (newSd == -1) {
-        // check if there are no pending connections -- not a real error 
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        } else {
-            // connect fails
-            cerr << "Error accepting connection on socket: serverSd - " << serverSd << endl;
-        }
-    } else {
-      //  cerr << "Connection made on socket: newSd - " << newSd << endl;
-    }
-    return newSd;
 }
 
 // announces that you are avaliable to play, carries contact info and puts the player into the avalible player list

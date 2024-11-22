@@ -26,6 +26,41 @@
 #include <signal.h>       // for the shutdown signal
 #include <fcntl.h>        // for fcntl -- to set non-blocking
 
+// port to use/ listen on
+#define PORT "2087"
+// # of connection requests for the server to listen to at a time, used in listen call
+#define BACKLOG 50
+
 using namespace std;
+
+// make a addrinfo for listening using - server side
+struct addrinfo* makeAddrinfo(string type, int port);
+// make a addrinfo for socket structs - client side
+struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port)
+
+// make a socket for any purpose as set in the makeAddrinfo funcs
+int makeSocket(struct addrinfo* servinfo);
+
+// make the sd non blocking -- curenntly only seems useful for listening sockets
+void setNonblocking(int serverSd);
+
+// make the socket reusable after discconnect - usually server side
+void setSocketReuse(int serverSd);
+
+// bind the socket to the port
+void bindSocket(int serverSd, struct addrinfo* servinfo);
+
+// listen on the socket for up to backlog # of connections
+void listening(int serverSd, int backlog);
+
+// Accept the connection as a new socket -- server side
+// is non-blocking
+int acceptConnection(int serverSd);
+
+// connect the socket to the server, do error checks, frees addrinfo list - client side
+void connectSocket(int clientSd, struct addrinfo* servinfo);
+
+// ends the connection
+void closeSocket(int sd);
 
 #endif
