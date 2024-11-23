@@ -164,25 +164,49 @@ void connectSocket(int clientSd, struct addrinfo* servinfo){
     freeaddrinfo(servinfo);
 }
 
-// types of sending and recieving below here
+// types of sending and recieving below here -- alow with some helpers
 
-// send a UDP msg as char[]
-void sendUdpMsg(int sd, char message[], struct addrinfo *servinfo){
-    int bytes_sent = sendto(sd, message, BUFFER_SIZE, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+vector<char> serializeBaseMsg(const baseMsg& msg){
+    // make the vector to hold the msg
+    vector<char> serializedMsg;
+
+    // convert the byte order to network for long type
+    unsigned int length = htonl(msg.length);
+    // put the length of the msg into the vector
+    serializedMsg.insert(serializedMsg.end(), reinterpret_cast<char*>(&length), reinterpret_cast<char*>(&length) + sizeof(length));
+
+    // put in the msg type 
+    serializedMsg.push_back(msg.type);
+    // put in the payload
+    serializedMsg.insert(serializedMsg.end(), msg.payload.begin(), msg.payload.end());
+
+    return serializedMsg;
+}
+
+// send a UDP msg as baseMsg
+void sendUdpMsg(int sd, const baseMsg& msg, struct addrinfo *servinfo){
+    // convert the baseMsg into a vecctor<char>
+    vector<char> converted = serializeBaseMsg(msg);
+
+    int bytes_sent = sendto(sd, converted.data(), converted.size(), 0, servinfo->ai_addr, servinfo->ai_addrlen);
     if (bytes_sent == -1){
         cerr << "Problem with UDP send" << endl;
     }
 }
 
-// send a TCP msg as char[] 
-void sendTcpMsg(int sd, char message[]){
+// send a TCP msg as baseMsg
+void sendTcpMsg(int sd, const baseMsg& msg){
+    // convert the baseMsg into a vecctor<char>
+    vector<char> converted = serializeBaseMsg(msg);
+
     // the total bytes sent
     int total = 0;
     // total bytes to send
-    int bytes = message.size() * sizeof(char);
+    int bytes = converted.size();
+
     // in case of partial sends, send until all bytes are sent -- only needed for tcp
     while (total < bytes){
-        int bytes_sent = send(sd, message + total, bytes - total, 0);
+        int bytes_sent = send(sd, converted.data() + total, bytes - total, 0);
         if (bytes_sent == -1){
             cerr << "Problem with TCP send" << endl;
             break;
@@ -191,49 +215,49 @@ void sendTcpMsg(int sd, char message[]){
     }
 }
 
-// recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking **********
-char* receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
-    // "buffer" for reading in and returning the server ackNum
-    int ackNum = -1;
-    int nRead = 0;
-    nRead = recvfrom(clientSd, &ackNum, sizeof(int), MSG_DONTWAIT, servinfo->ai_addr, &(servinfo->ai_addrlen));
-        if (nRead == -1){
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // do nothing simply nothing to read yet
-                ackNum = nullptr;
-            } else {
-                cerr << "Error reading from socket: clientSd = " << clientSd << endl;
-                ackNum = nullptr;
-            }
-        } else if (nRead == 0) {
-            cerr << "Server closed the connection" << endl;
-            ackNum = nullptr;
-        } else {
-// cout << "CLIENT Recieved via non blocking read - AckNum = " << ackNum << endl;
-            return ackNum;
-        }
-    return nullptr;
-}
+// // recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking **********
+// char* receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
+//     // "buffer" for reading in and returning the server ackNum
+//     int ackNum = -1;
+//     int nRead = 0;
+//     nRead = recvfrom(clientSd, &ackNum, sizeof(int), MSG_DONTWAIT, servinfo->ai_addr, &(servinfo->ai_addrlen));
+//         if (nRead == -1){
+//             if (errno == EAGAIN || errno == EWOULDBLOCK) {
+//                 // do nothing simply nothing to read yet
+//                 ackNum = nullptr;
+//             } else {
+//                 cerr << "Error reading from socket: clientSd = " << clientSd << endl;
+//                 ackNum = nullptr;
+//             }
+//         } else if (nRead == 0) {
+//             cerr << "Server closed the connection" << endl;
+//             ackNum = nullptr;
+//         } else {
+// // cout << "CLIENT Recieved via non blocking read - AckNum = " << ackNum << endl;
+//             return ackNum;
+//         }
+//     return nullptr;
+// }
 
-// read the msg from the client and feed into the buffer ie: message -- for UDP
-char* receiveUdp(int sd, struct addrinfo* servinfo){
-    int messageBuf[BUFFER_SIZE] = {0};
-    // recieve the message into the msg[] array and make sure it was read correctly
-            int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
-            if (nRead == -1){
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    // do nothing simply nothing to read yet
-                    return nullptr;
-                } else {
-                    cerr << "Error reading from socket: SD = " << sd << endl; 
-                    return nullptr;
-                }
-            } else if (nRead == 0) {
-                cerr << "Client closed the connection" << endl;
-                return nullptr;
-            }
-            return messageBuf[0];
-}
+// // read the msg from the client and feed into the buffer ie: message -- for UDP
+// char* receiveUdp(int sd, struct addrinfo* servinfo){
+//     int messageBuf[BUFFER_SIZE] = {0};
+//     // recieve the message into the msg[] array and make sure it was read correctly
+//             int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
+//             if (nRead == -1){
+//                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
+//                     // do nothing simply nothing to read yet
+//                     return nullptr;
+//                 } else {
+//                     cerr << "Error reading from socket: SD = " << sd << endl; 
+//                     return nullptr;
+//                 }
+//             } else if (nRead == 0) {
+//                 cerr << "Client closed the connection" << endl;
+//                 return nullptr;
+//             }
+//             return messageBuf[0];
+// }
 
 // recieve a UDP msg, non blocking, returns msg as baseMsg*
 baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
@@ -286,44 +310,44 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
     return msg;
 }
 
-// receive msg, blocking/stop and wait - tcp
-char* receiveBlockingTcp(int sd){
-    // "buffer" for reading in the server response
-    char buffer[BUFFER_SIZE];
-    // hold the complete message
-    string message;
-    // count the bytes read
-    int nRead;
+// // receive msg, blocking/stop and wait - tcp
+// char* receiveBlockingTcp(int sd){
+//     // "buffer" for reading in the server response
+//     char buffer[BUFFER_SIZE];
+//     // hold the complete message
+//     string message;
+//     // count the bytes read
+//     int nRead;
 
-    while (true){
-        // read the data from the socket
-        nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
-        if (nRead == -1){
-            cerr << "Error reading from socket: SD = " << sd << endl; 
-            return nullptr; 
-        } else if (nRead == 0) {
-            cerr << "Client closed the connection" << endl;
-            break;
-        } 
+//     while (true){
+//         // read the data from the socket
+//         nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
+//         if (nRead == -1){
+//             cerr << "Error reading from socket: SD = " << sd << endl; 
+//             return nullptr; 
+//         } else if (nRead == 0) {
+//             cerr << "Client closed the connection" << endl;
+//             break;
+//         } 
 
-        // null terminate th buffer to help other functions work right
-        buffer[nRead] = '\0';
-        // add what is read to the request
-        request.append(buffer);
+//         // null terminate th buffer to help other functions work right
+//         buffer[nRead] = '\0';
+//         // add what is read to the request
+//         request.append(buffer);
 
-        // check for the end of the msg and exit if found -- means we got the whole message
-        if (request.find(MSG_END) != string::npos){
-            break;
-        }
-    }
+//         // check for the end of the msg and exit if found -- means we got the whole message
+//         if (request.find(MSG_END) != string::npos){
+//             break;
+//         }
+//     }
 
-    // create a new char* to hold the whole msg
-    char* finalMsg = new char[message.length() + 1];
-    // copy the msg into the char*
-    strcpy(finalMsg, message.c_str());
+//     // create a new char* to hold the whole msg
+//     char* finalMsg = new char[message.length() + 1];
+//     // copy the msg into the char*
+//     strcpy(finalMsg, message.c_str());
 
-    return finalMsg;
-}
+//     return finalMsg;
+// }
 
 // receive msg, non-blocking does not wait - tcp
 baseMsg* receiveNonblockingTcp(int sd){

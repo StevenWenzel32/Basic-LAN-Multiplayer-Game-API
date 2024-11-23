@@ -89,25 +89,30 @@ void connectSocket(int clientSd, struct addrinfo* servinfo);
 void closeSocket(int sd);
 
 // msg sending
-// send a UDP msg as char[]
-void sendUdpMsg(int sd, char message[], struct addrinfo *servinfo);
-// send a TCP msg as char[] 
-void sendTcpMsg(int sd, char message[]);
+// helper function to searliaze the baseMsg into a vector<char> so the send will work right
+vector<char> serializeBaseMsg(const baseMsg& msg);
+// send a UDP msg as baseMsg
+void sendUdpMsg(int sd, const baseMsg& message, struct addrinfo *servinfo);
+// send a TCP msg as baseMsg
+void sendTcpMsg(int sd, const baseMsg& message);
 
 // msg receiving
 // should also make a blocking version **
 // recieve a UDP msg, reliable delivery, returns the msg as char[] -- does not wait for a response/non blocking
-char* receiveReliableUdp(int clientSd, struct addrinfo* servinfo);
+//char* receiveReliableUdp(int clientSd, struct addrinfo* servinfo);
 // should also make a blocking version later **
 // receive a UDP msg, returns the msg as char[] -- does not wait for a response/non blocking
-char* receiveUdp(int clientSd, struct addrinfo* servinfo);
+//char* receiveUdp(int clientSd, struct addrinfo* servinfo);
+// actually used ***
 // recieve a UDP msg, non blocking, returns msg as baseMsg*
 baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* servinfo);
 
 // receive msg, blocking/stop and wait, returns msg as char* - tcp
-char* receiveBlockingTcp(int sd);
+//char* receiveBlockingTcp(int sd);
+
+// this is being used
 // this is a great example of how the other receives should be made later on ***
-// receive a TCP msg, non-blocking does not wait, returns msg as baseMsg* - tcp
+// receive a TCP msg, non-blocking does not wait, returns msg as baseMsg*
 baseMsg* receiveNonblockingTcp(int sd);
 
 #endif
