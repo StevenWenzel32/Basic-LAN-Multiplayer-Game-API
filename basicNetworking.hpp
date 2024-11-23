@@ -21,6 +21,7 @@
 #include <cstring>        // for strerror
 #include <errno.h>        // errno
 #include <arpa/inet.h>    // conversion from little endian and big endian
+#include <vector>         // vector bu dur
 
 // hard coded values
 // port to use/ listen on
@@ -42,8 +43,18 @@ struct baseMsg {
     unsigned int length;
     // the type of msg being sent
     unsigned char type;
-    
+    // data to send should be other data packet structs
+    vector<char> payload;
 
+    // constructor with passing in values
+    baseMsg(unsigned char msgType, const char* payloadData, unsigned int payloadSize){
+        // get the payload size and the size of the type var
+        length = payloadSize + sizeof(type);
+        // pass in the type
+        type = msgType;
+        // pass in the payload data and its size
+        payload.assign(payloadData, payloadData + payloadSize);
+    }
 };
 
 // making addrinfo
@@ -90,11 +101,13 @@ char* receiveReliableUdp(int clientSd, struct addrinfo* servinfo);
 // should also make a blocking version later **
 // receive a UDP msg, returns the msg as char[] -- does not wait for a response/non blocking
 char* receiveUdp(int clientSd, struct addrinfo* servinfo);
+// recieve a UDP msg, non blocking, returns msg as baseMsg*
+baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* servinfo);
 
 // receive msg, blocking/stop and wait, returns msg as char* - tcp
 char* receiveBlockingTcp(int sd);
 // this is a great example of how the other receives should be made later on ***
-// receive msg, non-blocking does not wait, returns msg as char* - tcp
-char* receiveNonblockingTcp(int sd);
+// receive a TCP msg, non-blocking does not wait, returns msg as baseMsg* - tcp
+baseMsg* receiveNonblockingTcp(int sd);
 
 #endif

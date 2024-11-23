@@ -233,7 +233,57 @@ char* receiveUdp(int sd, struct addrinfo* servinfo){
                 return nullptr;
             }
             return messageBuf[0];
-    return nullptr;
+}
+
+// recieve a UDP msg, non blocking, returns msg as baseMsg*
+baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
+    int messageBuf[BUFFER_SIZE] = {0};
+    // recieve the message into the msg[] array and make sure it was read correctly
+    int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
+    // error checks
+    if (nRead == -1){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // do nothing simply nothing to read yet
+            return nullptr;
+        } else {
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+            return nullptr;
+        }
+    } else if (nRead == 0) {
+        cerr << "Client closed the connection" << endl;
+        return nullptr;
+    }
+    
+    // check if the length of the packet has come through
+    if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
+        // not enough data for the packet header
+        return nullptr;
+    }
+
+    // to hold the packet length
+    unsigned int packetLength = 0;
+    // copy the first 4 bytes into the packetLength
+    memcpy(&packetLength, messageBuf, sizeof(packetLength));
+    // convert the byte order from network into host for type long
+    packetLength = ntohl(packetLength);
+
+    // get the msg type
+    unsigned char packetType = messageBuf[sizeof(unsigned int)];
+
+    // check if you have the whole packet now
+    if (nRead < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
+        // don't have the whole packet yet
+        return nullptr;
+    }
+
+    // grab the payload of the msg
+    vector<char> packetPayload(messageBuf + sizeof(unsigned int) + sizeof(unsigned char), 
+        messageBuf + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
+
+    // create a baseMsg to return
+    baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
+
+    return msg;
 }
 
 // receive msg, blocking/stop and wait - tcp
@@ -276,7 +326,7 @@ char* receiveBlockingTcp(int sd){
 }
 
 // receive msg, non-blocking does not wait - tcp
-char* receiveNonblockingTcp(int sd){
+baseMsg* receiveNonblockingTcp(int sd){
     // "buffer" for reading in the server response
     char readInBuffer[BUFFER_SIZE];
     // holds the incomplete data until whole packet comes through
@@ -287,37 +337,42 @@ char* receiveNonblockingTcp(int sd){
     // while there is data to read in the socket
     while ((nRead = recv(sd, &readInBuffer, BUFFER_SIZE - 1, 0)) > 0){
         // null terminate th buffer to help other functions work right
-        buffer[nRead] = '\0';
+        readInBuffer[nRead] = '\0';
         // add what is read to the request
-        request.append(buffer);
+        incompletePacket.append(readInBuffer, nRead);
 
         // grab the data sent and put into packets
         while (true){
             // check if the length of the packet has come through
-            if (buffer.size() < 4){
+            if (incompletePacket.size() < sizeof(unsigned int) + sizeof(unsigned char)){
                 // not enough data for the packet header
                 break;
             }
+
             // to hold the packet length
-            int packetLength = 0;
+            unsigned int packetLength = 0;
             // copy the first 4 bytes into the packetLength
-            memcpy(&packetLength, buffer.data(), sizeof(packetLength));
+            memcpy(&packetLength, incompletePacket.data(), sizeof(packetLength));
             // convert the byte order from network into host for type long
             packetLength = ntohl(packetLength);
 
             // check if you have the whole packet now
-            if (buffer.size() < 4 + packetLength){
+            if (incompletePacket.size() < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
                 // don't have the whole packet yet
                 break;
             }
 
-            // grab the full packet starting after the length of the packet - its no longer needed
-            string packet = buffrer.substr(4, packetLength);
+            // get the packet type -- the byte after the length
+            unsigned char packetType = incompletePacket[sizeof(unsigned int)];
+            // get the payload -- everything after the length + type - takes in (start, end)
+            vector<char> packetPayload(incompletePacket.begin() + sizeof(unsigned int) + sizeof(unsigned char), incompletePacket.begin() + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
+            // make the baseMsg to return
+            baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
             // remove the full packet from the buffer
-            buffer.erase(0, 4 + packetLength);
+            incompletePacket.erase(0, sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
 
             // process the packet received
-            return packet;
+            return msg;
         }
     }
 
