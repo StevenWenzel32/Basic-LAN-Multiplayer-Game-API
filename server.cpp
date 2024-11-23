@@ -60,35 +60,6 @@ void signalHandler(int signum) {
     shutdown_flag = 1;
 }
 
-// combine with above
-// read the request from the client
-string readRequest(int sd){
-    // string to hold and return the request
-    string request;
-    // "buffer" for reading in the server response
-    char buffer[BUFFER_SIZE];
-    while (true){
-        int nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
-        if (nRead == -1){
-            cerr << "Error reading from socket: SD = " << sd << endl; 
-            return ""; 
-        } else if (nRead == 0) {
-            cerr << "Client closed the connection" << endl;
-            break;
-        } 
-        // null terminate th buffer to help other functions work right
-        buffer[nRead] = '\0';
-        // add what is read to the request
-        request.append(buffer);
-
-        // check for the end of the request and exit if found -- means we got the whole message
-        if (request.find("\r\n\r\n") != string::npos){
-            break;
-        }
-    }
-    return request;
-}
-
 // parse the GET request: first = method, second = file
 pair<string, string> parseRequest(string& msg){
     // make a stream for the msg
@@ -359,13 +330,7 @@ int main (int argc, char* argv[]) {
 } 
 
 
-struct baseMsg {
-    // the type of msg being sent
-    unsigned char type;
-    // the length of the msg being sent
-    unsigned int length;
 
-};
 
 struct gameListMsg {
 

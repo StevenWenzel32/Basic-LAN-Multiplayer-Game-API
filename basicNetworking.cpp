@@ -191,14 +191,8 @@ void sendTcpMsg(int sd, char message[]){
     }
 }
 
-
-
-
-
-
-
 // recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking **********
-int receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
+char* receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
     // "buffer" for reading in and returning the server ackNum
     int ackNum = -1;
     int nRead = 0;
@@ -206,83 +200,138 @@ int receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
         if (nRead == -1){
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 // do nothing simply nothing to read yet
-                ackNum = -1;
+                ackNum = nullptr;
             } else {
                 cerr << "Error reading from socket: clientSd = " << clientSd << endl;
-                ackNum = -2;
+                ackNum = nullptr;
             }
         } else if (nRead == 0) {
             cerr << "Server closed the connection" << endl;
-            ackNum = -3;
+            ackNum = nullptr;
         } else {
 // cout << "CLIENT Recieved via non blocking read - AckNum = " << ackNum << endl;
             return ackNum;
         }
-    return -4;
+    return nullptr;
 }
 
 // read the msg from the client and feed into the buffer ie: message -- for UDP
-int readMsg(int sd, struct addrinfo* servinfo){
+char* receiveUdp(int sd, struct addrinfo* servinfo){
     int messageBuf[BUFFER_SIZE] = {0};
     // recieve the message into the msg[] array and make sure it was read correctly
             int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
             if (nRead == -1){
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     // do nothing simply nothing to read yet
-                    return -1;
+                    return nullptr;
                 } else {
                     cerr << "Error reading from socket: SD = " << sd << endl; 
-                    return -2;
+                    return nullptr;
                 }
             } else if (nRead == 0) {
                 cerr << "Client closed the connection" << endl;
-                return -3;
+                return nullptr;
             }
             return messageBuf[0];
-    return -4;
+    return nullptr;
 }
 
-// read the request from the client - tcp
-string readRequest(int sd){
-    // string to hold and return the request
-    string request;
+// receive msg, blocking/stop and wait - tcp
+char* receiveBlockingTcp(int sd){
     // "buffer" for reading in the server response
     char buffer[BUFFER_SIZE];
+    // hold the complete message
+    string message;
+    // count the bytes read
+    int nRead;
+
     while (true){
-        int nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
+        // read the data from the socket
+        nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
         if (nRead == -1){
             cerr << "Error reading from socket: SD = " << sd << endl; 
-            return ""; 
+            return nullptr; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
             break;
         } 
+
         // null terminate th buffer to help other functions work right
         buffer[nRead] = '\0';
         // add what is read to the request
         request.append(buffer);
 
-        // check for the end of the request and exit if found -- means we got the whole message
-        if (request.find("\r\n\r\n") != string::npos){
+        // check for the end of the msg and exit if found -- means we got the whole message
+        if (request.find(MSG_END) != string::npos){
             break;
         }
     }
-    return request;
+
+    // create a new char* to hold the whole msg
+    char* finalMsg = new char[message.length() + 1];
+    // copy the msg into the char*
+    strcpy(finalMsg, message.c_str());
+
+    return finalMsg;
 }
 
-// recieve the responses from the server - tcp
-string readResponse(int clientSd){
-    // string to hold and return the response
-    string reply;
+// receive msg, non-blocking does not wait - tcp
+char* receiveNonblockingTcp(int sd){
     // "buffer" for reading in the server response
-    char buffer[BUFFER_SIZE];
-    int nRead = 0;
-    while ((nRead = recv(clientSd, &buffer, BUFFER_SIZE, 0)) > 0){
-        if (nRead == -1){
-            cerr << "Error reading from socket: clientSd - " << clientSd << endl;  
-            break;
+    char readInBuffer[BUFFER_SIZE];
+    // holds the incomplete data until whole packet comes through
+    string incompletePacket;
+    // count the # of bytes read
+    int nRead;
+
+    // while there is data to read in the socket
+    while ((nRead = recv(sd, &readInBuffer, BUFFER_SIZE - 1, 0)) > 0){
+        // null terminate th buffer to help other functions work right
+        buffer[nRead] = '\0';
+        // add what is read to the request
+        request.append(buffer);
+
+        // grab the data sent and put into packets
+        while (true){
+            // check if the length of the packet has come through
+            if (buffer.size() < 4){
+                // not enough data for the packet header
+                break;
+            }
+            // to hold the packet length
+            int packetLength = 0;
+            // copy the first 4 bytes into the packetLength
+            memcpy(&packetLength, buffer.data(), sizeof(packetLength));
+            // convert the byte order from network into host for type long
+            packetLength = ntohl(packetLength);
+
+            // check if you have the whole packet now
+            if (buffer.size() < 4 + packetLength){
+                // don't have the whole packet yet
+                break;
+            }
+
+            // grab the full packet starting after the length of the packet - its no longer needed
+            string packet = buffrer.substr(4, packetLength);
+            // remove the full packet from the buffer
+            buffer.erase(0, 4 + packetLength);
+
+            // process the packet received
+            return packet;
         }
-        reply.append(buffer, nRead);
     }
-    return reply;
+
+    // check for receive errors
+    if (nRead == -1){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // do nothing simply nothing to read yet
+        } else {
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+        }
+    } else if (nRead == 0) {
+        cerr << "Client closed the connection" << endl;
+    }
+
+    // if you get here there is nothing
+    return nullptr;
 }
