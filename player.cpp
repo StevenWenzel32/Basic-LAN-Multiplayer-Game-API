@@ -5,55 +5,90 @@
 // my files
 #include "player.hpp"
 
-// announces that you are avaliable to play, carries contact info and puts the player into the avalible player list
+// announces that you are avaliable to play, carries contact info
 // maybe add a player username
-void Register(){
+void registerPlayerOut(){
     // get the player username
-    string username =;
+//    string username =;
     // get the player ip 
     int ip = ;
     // get the player port for the game???
     unsigned int port = ;
-    // send msg to the server with the player info
-    registerMsg(username, ip, port);
-    // maybe grab the response and player id here ***********
+    // broadcast msg to the LAN - udp
+    registerMsg(ip, port);
+    // put yourself into your local player list
 }
 
-// get a list of avaiable games to join
-// query the server
+// puts the player into the player list
+void registerPlayerIn(int ip, unsigned port){
+    // put the player into the local player list
+
+}
+
+// get a list of avaiable games to join -- instead of query server use clients own list
 // can possibly show who is playing if using usernames
-void ListGames(){
-    // send a request for the list of games to the server
-    gameListMsg(playerId);
+void listGames(){
+    // print out the local list of games
+
 }
 
-// send the server my player id and tell it to make a game with me as the host
-void CreateGame(){
-    // send the server the playerId
-    createGameMsg(playerId);
-    // maybe grab the response and game id here ********
+// create a game and braodcast it on the LAN
+void createGameOut(){
+    // create a game object 
+    // update your current game
+    // put the game object into local list
+    // broadcast the creation of the game - udp
+    createGameMsg(playerIp);
 }
 
-// tell the server to let me join this game
-void JoinGame(int gameId){
-    // send the playerId and gameId to the server
-    joinGameMsg(playerId, gameId);
-    // update the currentGameId
-    currentGameId = gameId;
+void createGameIn(){
+
 }
 
-// send playerId and game Id to the server to have me removed from the game
-void ExitGame(){
-    // send msg
-    exitGameMsg(playerId, currentGameId);
-    // reset game id
-    currentGameId = 0;
+// notify the host of the game that you are joining, broadcast the game is full// tell the server to let me join this game
+void joinGameOut(int game){
+    // send join msg to host - tcp
+    joinGameMsg(playerIp, game);
+    // wait for response from host
+    // update your game list by removing the game you joined
+    // broadcast that the game is full and should be removed from the list of games
+    // update the currentGame
+    currentGame = game;
 }
 
-// tell server to remove me from list of players
-void Unregister(){
-    // send server my id
-    unregisterMsg(playerId);
-    // reset playerId
-    playerId = 0;
+void joinGameIn(int game){
+
+}
+
+// leave the game - handles both cases of the calling player being host and client 
+void exitGameOut(){
+    // if not host
+        // send exit msg to the host - tcp
+        exitGameMsg(playerIp, currentGame);
+        // disconnect from host
+        // broadcast out the game is back in list
+    // if host
+        // disconnect from client
+        // broadcast out the game is gone from list
+        // end game session
+    // reset your game
+    currentGame = 0;
+    // update local game list
+}
+
+void exitGameIn(){
+
+}
+
+// remove yourslef from your player list and broadcast to others to remove you
+void unregisterOut(){
+    // remove yourself from player list
+    // broadcast out that others should remove you from player list
+    unregisterMsg(playerIp);
+    // reset playerIp
+    playerIp = 0;
+}
+
+void unregisterIn(){
+
 }
