@@ -35,6 +35,8 @@ void listGames(){
 // create a game and braodcast it on the LAN
 void createGameOut(){
     // create a game object 
+    // create a listening port for the host
+    // update your player object
     // update your current game
     // put the game object into local list
     // broadcast the creation of the game - udp

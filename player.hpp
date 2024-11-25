@@ -56,23 +56,16 @@ struct announcement {
     }
 };
 
-struct player{
-    // name to identify the player
-//    string username = "";
-    // port to use for connection to the player's game
-    unsigned short port;
-    // players ip address
-    array<unsigned short, 8> ip;
-}Player;
-
 // game struct to hold game info
 struct game{
+    // for quick id
     int id = 0;
     // the knight/host/player1
     struct player host;
     // the slime/client/player2
     struct player client;
-    unsigned char players = 0;
+    // # of players in the game
+//    unsigned char players = 0;
 }Game;
 
 // need a list of players
