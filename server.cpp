@@ -3,45 +3,6 @@
 // my files
 #include "server.hpp"
 
-// player struct to hold player info
-struct player{
-    // name to identify the player
-    string username = "";
-    // id for the player
-    int id = 0;
-    // port to use for connection to the player's game
-    unsigned short port;
-    // players ip address
-    array<unsigned short, 8> ip;
-}Player;
-
-// game struct to hold game info
-struct game{
-    int id = 0;
-    // the knight/host/player1
-    struct player host;
-    // the slime/client/player2
-    struct player client;
-    unsigned char players = 0;
-}Game;
-
-// need a list of players
-// expecting around 50 players - class size is less than 45
-unordered_map<int, Player> players;
-// used to create player ids
-int playerCounter = 1;
-
-// need a list of games being played -- expecting roughly 25 games to be played at once
-// maps the gameId to the game
-unordered_map<int, Game> fullGames;
-// need a list of games that need another player
-// maps the gameId to the game
-unordered_map<int, Game> avaliableGames;
-// counter to create game ids
-int gameCounter = 1;
-
-
-
 // holds the threads to ensure proper shutdown later on 
 vector<pthread_t> threads; 
 

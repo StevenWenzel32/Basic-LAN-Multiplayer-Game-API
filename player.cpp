@@ -8,21 +8,24 @@
 // announces that you are avaliable to play, carries contact info
 // maybe add a player username
 void registerPlayerOut(){
-    // get the player username
-//    string username =;
-    // get the player ip 
-    int ip = ;
-    // get the player port for the game???
-    unsigned int port = ;
-    // broadcast msg to the LAN - udp
-    registerMsg(ip, port);
-    // put yourself into your local player list
+    // send your ip adder and port on the broadcast msg to the LAN - udp
+    registerMsg(this.ipAdder, this.port);
 }
 
 // puts the player into the player list
 void registerPlayerIn(int ip, unsigned port){
-    // put the player into the local player list
-
+    // up the player count
+    playerCounter++;
+    // create a new player object
+    struct player newPlayer;
+    // put in the new id
+    newPlayer.id = playerCounter;
+    // get the players ip
+    newPlayer.ip = ip;
+    // get the players port
+    newPlayer.port = port;
+    // put the player into the players list
+    players.emplace(newPlayer.id, newPlayer);
 }
 
 // get a list of avaiable games to join -- instead of query server use clients own list
@@ -93,4 +96,47 @@ void unregisterOut(){
 
 void unregisterIn(){
 
+}
+
+// getters and setters
+string getPlayerIp(){
+    return this.ipAdder;
+}
+
+void setPlayerIp(string ip){
+    this.ipAdder = ip;
+}
+
+void setIpAsLocal(){
+    char hostname[1024];
+    memset (hostname, 0, sizeof(hostname));
+
+    // get hostname of the system
+    if (gethostname(hostname, sizeof(hostname)) == -1){
+        cerr << "get hostname failed" << endl;
+        return;
+    }
+
+    // to store the addrinfo we use
+    struct addrinfo hints;
+    // pointer to the list
+    struct addrinfo *res;
+    // fill in the addrinfo
+    memset(&hints, 0, sizeof(hints));
+    // ipv4 for simplicity 
+    hints.ai.family = AF_INET; 
+    // tcp because ???
+    hints.ai_socktype = SOCK_STREAM; 
+
+    // resolve the host name to an IP address
+    if (getaddrinfo(hostname, nullptr, &hints, &res) != 0){
+        cerr << "get addrinfo failed" << endl;
+    }
+
+    // convert the IP into a string
+    char ipStr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr));
+
+    freeaddrinfo(res);
+    this.ipAdder = ipStr;
 }

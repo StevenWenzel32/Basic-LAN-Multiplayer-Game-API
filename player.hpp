@@ -24,12 +24,16 @@
 #include <chrono>         // for steady_clock and timer stuff
 #include <queue>          // for queue, duh
 #include <cerrno>
-#include <cstring>        // for strerror
-#include <vector>
 #include <array>
 
 // for sure being used
 #include <unordered_map>
+#include <vector>
+#include <iostream>
+#include <cstring>       // For memset
+#include <unistd.h>      // For gethostname
+#include <netdb.h>       // For getaddrinfo
+#include <arpa/inet.h>   // For inet_ntop
 
 // my files
 // for the socket related functions and basic msg sends and recieves
@@ -69,8 +73,8 @@ struct game{
 }Game;
 
 // need a list of players
-// expecting around 50 players - class size is less than 45
-unordered_map<int, Player> players;
+// expecting around 50 players - class size is less than 45 - does not contain yourself
+vector<int, Player> players;
 // used to create player ids
 int playerCounter = 1;
 
@@ -81,7 +85,7 @@ unordered_map<int, Game> fullGames;
 // maps the gameId to the game
 unordered_map<int, Game> avaliableGames;
 // counter to create game ids
-int gameCounter = 1;
+int gameCounter;
 
 class Player {
     public: 
@@ -121,12 +125,19 @@ class Player {
     // can possibly show who is playing if using usernames
     void listGames();
 
+    // getters and setters
+    int getPlayerIp();
+    void setPlayerIp();
+
+
     protected:
     // vars related to the players device
     // the port the game is running on
     unsigned int port;
     // the current ip address of the player
     string ipAddr;
+    // used to place player in the local unordered map
+    int id;
     // if usernames are being used the player can change it at any time
 //    string username;
 
