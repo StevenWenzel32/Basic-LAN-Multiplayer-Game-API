@@ -33,6 +33,22 @@ KNIGHT AND SLIME
 	
 	PLAYER TRACKING
 	- how players connect
-		- send a boradcast message out on the local network from the server to check for players who want to connect
+		- send a boradcast message out on the local network from the server/host to check for players who want to connect
 		- computers listening on broadcast will record the IP and MAC of the server and respond in a certain way 
 			- use a file they download or something to connect??
+			
+	Project notes 
+	- no socket calls in game code = build API first 
+	- think about the arcitecture before hand
+		- pure p2p 
+			- use broadcast on LAN - wired or wireless 
+			- or use multicast group 
+			- game is run on the clients 
+		- pure client server 
+			- clients send to server
+			- all connections go through the server 
+			- the game is run through the server 
+		- hyrid p2p 
+			- uses server to help the start of the game	
+				- match making
+			- the game is run on the clients 
