@@ -71,6 +71,7 @@ void createGameOut(){
     avaliableGames.emplace(newGame.id, newGame);
     // broadcast the creation of the game - udp
     createGameMsg(newGame);
+    // start up the game *************
 }
 
 // handling the recieving of a notification that a new game was created
@@ -162,27 +163,25 @@ void unregisterIn(string playerIp){
 // helper functions
 
 // connect the client player to the host player - client side
-// works with tcp and udp
-void connectToHost(string type, Player host){
+// works with tcp and udp, returns the SD
+int connectToHost(string type, Player host){
     // make the addrinfo
     struct addrinfo* servinfo = makeAddrinfo(type, host.ipAddr, PORT);
 
     // make the socket
-    int clientSd = makeSocket(servinfo);
+    return makeSocket(servinfo);
 }
 
 // accepts the connection to the client player - host side
+// returns the new SD
 void acceptClientPlayer(){
-
+    return acceptConnection(clientSd);
 }
 
-// disconnects the socket if TCP
-// stops listening for msgs from the other player if UDP
-void disconnectFromPlayer(unsigned int port, string playerIp){
-
+// closes the connection socket or the listening socket
+void disconnectFromPlayer(int playerSd){
+    closeSocket(playerSd);
 }
-
-
 
 // getters and setters
 string getPlayerIp(){
