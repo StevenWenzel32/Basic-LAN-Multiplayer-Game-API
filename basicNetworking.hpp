@@ -69,6 +69,8 @@ int makeSocket(struct addrinfo* servinfo);
 void setNonblocking(int serverSd);
 // make the socket reusable after discconnect - usually server side
 void setSocketReuse(int serverSd);
+// turn on broadcasting for the socket
+void setSocketBroadcast(int sd);
 
 // bind the socket to the port
 void bindSocket(int serverSd, struct addrinfo* servinfo);

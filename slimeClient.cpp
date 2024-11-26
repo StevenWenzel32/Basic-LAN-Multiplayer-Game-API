@@ -8,36 +8,39 @@
 // function with loop to run while in a game
 
 int main (int argc, char* argv[]) {
-    // setup the listening socket for boradcast msgs
+    // setup the listening socket for broadcast msgs
     struct addrinfo* clientinfo = makeAddrinfo("udp", PORT);
     // make the socket
-    int clientListenSd = makeSocket(clientinfo);
+    this.broadSd = makeSocket(clientinfo);
     // set the option to resuse 
-    setSocketReuse(clientListenSd);
-    // bind the socket
-    bindSocket(clientListenSd, clientinfo);
-    
-    // setup the socket for sending broadcast msgs
-    int clientSendSd = makeSocket(clientinfo);
-    setSocketReuse(clientListenSd);
-
-    // free after being used -- will porbably be moved again 
+    setSocketReuse(this.broadSd);
+    // turn on the broadcast - for sending 
+    setSocketBroadcast(this.broadSd);
+    // bind the socket - for listening 
+    bindSocket(this.broadSd, clientinfo);
+    // free after being used -- will probably be moved again 
     freeaddrinfo(clientinfo);
+
+    // setup the socket for sending broadcast msgs
+    // use ipv4
+    this.broadcastAddr.sin_family = AF_INET;
+    // convert the port to network byte order
+    this.broadcastAddr.sin_port = htons(atoi(PORT));
+    // set the boradcast addr
+    this.broadcast.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     // Thread for listening for broadcast msgs -- always running until shutdown
     // must make a listenForMsgs() *************
-    thread listenerThread(listenForMsgs, clientListenSd);
+    thread listenerThread(listenForMsgs, this.broadSd);
 
     // main thread sends msgs
-    sendMessages(clientSendSd, clientinfo);
+    sendMessages(this.broadSd, clientinfo);
     
     // make sure the listeing thread has ended before closing
     listenerThread.join();
     
-    // close broadcast listening
-    closeSocket(clientListenSd);
-    // close broadcast sending
-    closeSocket(clientSendSd);
+    // close the broadcast socket used for listening and sending
+    closeSocket(this.broadSd);
     return 0;
 } 
 

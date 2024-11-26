@@ -76,28 +76,38 @@ int makeSocket(struct addrinfo* servinfo){
     int sd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
     // check if the socket call had an error
     if (sd == -1) {
-        cerr << "error making the socket: serverSd - " << serverSd << endl;
+        cerr << "error making the socket: sd - " << sd << endl;
     }
     return sd;
 }
 
 // make the sd non-blocking -- only being used for listening sockets for now
-void setNonblocking(int serverSd){
+void setNonblocking(int sd){
     // get the current flags
-    int flags = fcntl(serverSd, F_GETFL, 0);
+    int flags = fcntl(sd, F_GETFL, 0);
     // turn on the non-blocking flag
-    fcntl(serverSd, F_SETFL, flags | O_NONBLOCK); 
+    fcntl(sd, F_SETFL, flags | O_NONBLOCK); 
 }
 
 // set the socket reuse function to help free up unused sockets and ports
-void setSocketReuse(int serverSd){
+void setSocketReuse(int sd){
     // Enable socket reuse without waiting for the OS to recycle it
     // set the so-reuseaddr option
     const int on = 1;
-    int success = setsockopt(serverSd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int));
+    int success = setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int));
     // check if the option call failed
     if (success == -1) {
-        cerr << "Error setting the socket reuse option: serverSd - " << serverSd << endl;
+        cerr << "Error setting the socket reuse option: sd = " << sd << endl;
+    }
+}
+
+// set the socket reuse function to help free up unused sockets and ports
+void setSocketBroadcast(int sd){
+    const int on = 1;
+    int success = setsockopt(sd, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof(int));
+    // check if the option call failed
+    if (success == -1) {
+        cerr << "Error setting the socket broadcast option: sd = " << sd << endl;
     }
 }
 

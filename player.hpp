@@ -161,10 +161,10 @@ class Player {
     int playerSd;
     // if the above if a udp - this is the other players info
     struct addrinfo* playerinfo;
-    // the socket for sending broadcast msgs
-    int broadSendSd;
+    // the socket for sending broadcast msgs and for listening for broadcast msgs
+    int broadSd;
     // the addrinfo for sending on broadcast
-    struct addrinfo* broadinfo;
+    sockaddr_in broadcastAddr{};
 
 
     // vars related to the current session
