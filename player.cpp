@@ -10,8 +10,8 @@
 void registerPlayerOut(){
     // set your ipAddr
     this.setIpAsLocal();
-    // send your ip adder and port on the broadcast msg to the LAN - udp
-    registerMsg(this.ipAdder, this.port);
+    // send your ip addr and port on the broadcast msg to the LAN - udp
+    registerMsg(this.ipAddr, this.port);
 }
 
 // puts the player into the player list
@@ -23,7 +23,7 @@ void registerPlayerIn(string ip, unsigned int port){
     // put in the new id
     newPlayer.id = playerCounter;
     // get the players ip
-    newPlayer.ipAdder = ip;
+    newPlayer.ipAddr = ip;
     // get the players port
     newPlayer.port = port;
     // put the player into the players list
@@ -87,7 +87,7 @@ void createGameIn(struct game newGame){
 // notify the host of the game that you are joining, broadcast the game is full
 void joinGameOut(int gameId){
     // send join msg to host - tcp
-    joinGameMsg(this.ipAdder, gameId);
+    joinGameMsg(this.ipAddr, gameId);
     // connect to host
     connectToHost("tcp", avaliableGames.at(gameId).host);
     // update the currentGame
@@ -114,16 +114,16 @@ void exitGameOut(){
     // if not host
     if (this.currentGame.host != this){
         // send exit msg to the host - tcp
-        exitGameMsg(this.currentGame.host.ipAdder, this.currentGame);
-        // disconnect from host -- create a discconect method *************
-        disconnectFromPlayer(this.currentGame.host.port);
+        exitGameMsg(this.currentGame.host.ipAddr);
+        // disconnect from host
+        disconnectFromPlayer(this.hostSocket);
         // broadcast out the game is back in list
         createGameMsg(this.currentGame);
     } 
     // if host
     else{
-        // disconnect from client -- create a discconect method *************
-        disconnectFromPlayer(this.currentGame.client.port);
+        // disconnect from client
+        disconnectFromPlayer(this.hostSocket);
         // end game session ************** -- not super sure if this is needed
         endGameSession();
     }
@@ -143,7 +143,7 @@ void unregisterOut(){
     // remove yourself from player list
     players.erase(this.id);
     // broadcast out that others should remove you from player list
-    unregisterMsg(this.ipAdder);
+    unregisterMsg(this.ipAddr);
     // reset playerId
     this.playerId = 0;
 }
@@ -153,7 +153,7 @@ void unregisterIn(string playerIp){
     // search the map for the player that matches
     for (auto i = players.begin(); i != players.end(); ++i){
         // if the same ip
-        if (i->second.ipAdder == playerIp){
+        if (i->second.ipAddr == playerIp){
             // remove the player 
             players.erase(i->first);
         }
@@ -167,7 +167,6 @@ void unregisterIn(string playerIp){
 int connectToHost(string type, Player host){
     // make the addrinfo
     struct addrinfo* servinfo = makeAddrinfo(type, host.ipAddr, PORT);
-
     // make the socket
     return makeSocket(servinfo);
 }
@@ -185,11 +184,11 @@ void disconnectFromPlayer(int playerSd){
 
 // getters and setters
 string getPlayerIp(){
-    return this.ipAdder;
+    return this.ipAddr;
 }
 
 void setPlayerIp(string ip){
-    this.ipAdder = ip;
+    this.ipAddr = ip;
 }
 
 // set the players ip to the local users ip 
@@ -224,5 +223,84 @@ void setIpAsLocal(){
     inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr));
 
     freeaddrinfo(res);
-    this.ipAdder = ipStr;
+    this.ipAddr = ipStr;
+}
+
+
+// msg creation and sending functions
+
+// the port might be unneeded
+// send a broadcast msg to register the player into other players list
+// sending your own ip
+void registerMsg(string ip, string port){
+    // put the passed in values into an acceptable payload
+    char payload[256];
+    snprintf(payload, sizeof(payload), "%s", ip);
+    // create the baseMsg
+    // 1 = register msg
+    struct baseMsg msg(1, payload, strlen(payload));
+    // send the baseMsg
+    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+}
+
+// send a broadcast msg to unregister the player from player lists
+// sending your own ip
+void unregisterMsg(string ip){
+    // put the passed in values into an acceptable payload
+    char payload[256];
+    snprintf(payload, sizeof(payload), "%s", ip);
+    // create the baseMsg
+    // 2 = "unregister"
+    struct baseMsg msg(2, payload, strlen(payload));
+    // send the baseMsg
+    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+}
+
+// send a msg to the other player that you are leaving the game
+// might not be needed escentailly sending just a default msg ****
+void exitGameMsg(){
+    // create the defualt msg to send
+    string payload = "other player has left the game";
+    // create the baseMsg
+    // 3 = "exitGame"
+    struct baseMsg msg(3, payload.c_str, payload.size());
+    // send the baseMsg
+    sendUdpMsg(this.playerSocket, msg, this.playerinfo);
+}
+
+// broadcast the creation of a game, sends the game info
+void createGameMsg(struct game game){
+    // put the passed in values into an acceptable payload
+    // put in a function to serialize the game info **************
+    const char* payload = game.id;
+    payload += game.host
+    // create the baseMsg
+    // 4 = "createGame"
+    struct baseMsg msg(4, payload, strlen(payload));
+    // send the baseMsg
+    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+}
+
+// broadcast that the game you just joined is full, send gameId
+void gameFullMsg(int gameId){
+    // put the passed in values into an acceptable payload
+    char payload[32];
+    snprintf(payload, sizeof(payload), "%d", gameId);
+    // create the baseMsg
+    // 5 = "gameFull"
+    struct baseMsg msg(5, payload, strlen(payload));
+    // send the baseMsg
+    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+}
+
+// tell the host you have joined their game, send your ip and the gameId
+void joinGameMsg(string ip){
+    // put the passed in values into an acceptable payload
+    char payload[256];
+    snprintf(payload, sizeof(payload), "%s", ip.c_str());
+    // create the baseMsg
+    // 6 = "joinGame"
+    struct baseMsg msg(6, payload, strlen(payload));
+    // send the baseMsg
+    sendUdpMsg(this.playerSd, msg, this.playerinfo);
 }

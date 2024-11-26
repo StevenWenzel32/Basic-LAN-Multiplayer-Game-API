@@ -156,8 +156,16 @@ class Player {
     // if usernames are being used the player can change it at any time
 //    string username;
 
-    // the sd to use to connect to the server/host
-//    int hostSocket;
+    // the sd to use to connect to the other player
+    // can be either tcp or udp - can later use both to connect to the player
+    int playerSd;
+    // if the above if a udp - this is the other players info
+    struct addrinfo* playerinfo;
+    // the socket for sending broadcast msgs
+    int broadSendSd;
+    // the addrinfo for sending on broadcast
+    struct addrinfo* broadinfo;
+
 
     // vars related to the current session
     // game changes when they leave or join a game

@@ -90,7 +90,7 @@ void closeSocket(int sd);
 // helper function to searliaze the baseMsg into a vector<char> so the send will work right
 vector<char> serializeBaseMsg(const baseMsg& msg);
 // send a UDP msg as baseMsg
-void sendUdpMsg(int sd, const baseMsg& message, struct addrinfo *servinfo);
+void sendUdpMsg(int sd, const baseMsg& message, struct addrinfo *destinfo);
 // send a TCP msg as baseMsg
 void sendTcpMsg(int sd, const baseMsg& message);
 
