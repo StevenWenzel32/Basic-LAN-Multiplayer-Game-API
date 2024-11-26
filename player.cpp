@@ -73,56 +73,89 @@ void createGameOut(){
     createGameMsg(newGame);
 }
 
-void createGameIn(){
-
+// handling the recieving of a notification that a new game was created
+void createGameIn(struct game newGame){
+    // up your local gameCounter
+    gameCounter++;
+    // reset the game counter to fit your local map 
+    newGame.id = gameCounter;
+    // add the given game to your local game list
+    avaliableGames.emplace(gameCounter, newGame);
 }
 
-// notify the host of the game that you are joining, broadcast the game is full// tell the server to let me join this game
-void joinGameOut(int game){
+// notify the host of the game that you are joining, broadcast the game is full
+void joinGameOut(int gameId){
     // send join msg to host - tcp
-    joinGameMsg(playerIp, game);
-    // wait for response from host
-    // update your game list by removing the game you joined
-    // broadcast that the game is full and should be removed from the list of games
+    joinGameMsg(this.ipAdder, gameId);
+    // connect to host - make a connectToHost() *****************
+    // wait for response from host *************
     // update the currentGame
-    currentGame = game;
+    this.currentGame = avaliableGames.at(gameId);
+    // update your game list by removing the game you joined
+    avaliableGames.erase(gameId);
+    // broadcast that the game is full and should be removed from the list of games
+    gameFullMsg(gameId);
 }
 
-void joinGameIn(int game){
-
+// handling the recieving of a notification that a game is full
+void joinGameIn(int gameId){
+    // check if the gameId is the game you are in
+    if (gameId == this.currentGameId){
+        // send msg to the terminal
+        cout << "A new player has joined your game" << endl;
+    }
+    // remove the game from the list
+    avaliableGames.erase(gameId);
 }
 
 // leave the game - handles both cases of the calling player being host and client 
 void exitGameOut(){
     // if not host
+    if (this.currentGame.host != this){
         // send exit msg to the host - tcp
-        exitGameMsg(playerIp, currentGame);
-        // disconnect from host
+        exitGameMsg(this.currentGame.host.ipAdder, this.currentGame);
+        // disconnect from host -- create a discconect method *************
+        disconnectFromPlayer(this.currentGame.host.port);
         // broadcast out the game is back in list
+        createGameMsg(this.currentGame);
+    } 
     // if host
-        // disconnect from client
-        // broadcast out the game is gone from list
-        // end game session
+    else{
+        // disconnect from client -- create a discconect method *************
+        disconnectFromPlayer(this.currentGame.client.port);
+        // end game session **************
+    }
+    
     // reset your game
-    currentGame = 0;
-    // update local game list
+    this.currentGame = nullptr;
 }
 
+// handles revceiving a exitGameMsg -- might not actually need
 void exitGameIn(){
-
+    // print to terminal that the other player has left
+    cout << "Your friend the Slime has left the game" << endl;
 }
 
 // remove yourslef from your player list and broadcast to others to remove you
 void unregisterOut(){
     // remove yourself from player list
+    players.erase(this.id);
     // broadcast out that others should remove you from player list
-    unregisterMsg(playerIp);
-    // reset playerIp
-    playerIp = 0;
+    unregisterMsg(this.ipAdder);
+    // reset playerId
+    this.playerId = 0;
 }
 
-void unregisterIn(){
-
+// handles reciving a broadcasted unregisterMsg -- might not actually need a list of players
+void unregisterIn(string playerIp){
+    // search the map for the player that matches
+    for (auto i = players.begin(); i != players.end(); ++i){
+        // if the same ip
+        if (i->second.ipAdder == playerIp){
+            // remove the player 
+            players.erase(i->first);
+        }
+    }
 }
 
 

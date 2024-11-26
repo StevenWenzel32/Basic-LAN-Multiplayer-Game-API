@@ -134,9 +134,9 @@ class Player {
     // the port the game is running on
     unsigned int port;
     // the current ip address of the player
-    string ipAddr;
+    string ipAddr = "";
     // used to place player in the local unordered map
-    int id;
+    int id = 0;
     // if usernames are being used the player can change it at any time
 //    string username;
 
@@ -145,7 +145,7 @@ class Player {
 
     // vars related to the current session
     // game changes when they leave or join a game
-    struct game currentGame;
+    struct game currentGame = nullptr;
 };
 
 #endif
