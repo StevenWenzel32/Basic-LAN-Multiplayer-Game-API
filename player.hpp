@@ -173,3 +173,11 @@ class Player {
 };
 
 #endif
+
+// update the hpp funtion declarations
+// finish the msg sending functions 
+// add in the proccessing of the msgs recieved 
+// find a way to start the game
+// function for listening multitrheaded and protected
+// function for sending msgs
+    // if joining a game this will start a new thread that uses tcp and stop and wait for sending game data 
