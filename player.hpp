@@ -113,20 +113,36 @@ class Player {
 
     // in functions / msg processing
     // puts the player into the player list
-    void registerPlayerIn();
-    void createGameIn();
+    void registerPlayerIn(string ip, unsigned int port);
+    // handling the recieving of a notification that a new game was created
+    void createGameIn(struct game newGame);
+    // handling the recieving of a notification that a game is full
     void joinGameIn(int gameId);
+    // handles revceiving a exitGameMsg -- might not actually need
     void exitGameIn();
-    void unregisterIn();
+    // handles reciving a broadcasted unregisterMsg -- might not actually need a list of players
+    void unregisterIn(string playerIp);
 
     // other functions
     // get a list of avaiable games to join -- instead of query server use clients own list
     // can possibly show who is playing if using usernames
     void listGames();
 
+    // helper functions for the above core functions
+    // connect the client player to the host player - client side
+    void connectToHost(Player host);
+    // accepts the connection to the client player - host side
+    void acceptClientPlayer();
+    // disconnects the socket if TCP
+    // stops listening for msgs from the other player if UDP
+    void disconnectFromPlayer(unsigned int port, string playerIp);
+    
+
     // getters and setters
-    int getPlayerIp();
-    void setPlayerIp();
+    string getPlayerIp();
+    void setPlayerIp(string ip);
+    // set the players ip to the local users ip 
+    void setIpAsLocal();
 
 
     protected:
@@ -140,8 +156,8 @@ class Player {
     // if usernames are being used the player can change it at any time
 //    string username;
 
-    // the sd to use to connect to the server
-//    int serverSocket;
+    // the sd to use to connect to the server/host
+//    int hostSocket;
 
     // vars related to the current session
     // game changes when they leave or join a game

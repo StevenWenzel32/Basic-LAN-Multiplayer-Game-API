@@ -15,7 +15,7 @@ void registerPlayerOut(){
 }
 
 // puts the player into the player list
-void registerPlayerIn(string ip, unsigned port){
+void registerPlayerIn(string ip, unsigned int port){
     // up the player count
     playerCounter++;
     // create a new player object
@@ -87,8 +87,8 @@ void createGameIn(struct game newGame){
 void joinGameOut(int gameId){
     // send join msg to host - tcp
     joinGameMsg(this.ipAdder, gameId);
-    // connect to host - make a connectToHost() *****************
-    // wait for response from host *************
+    // connect to host
+    connectToHost(avaliableGames.at(gameId).host);
     // update the currentGame
     this.currentGame = avaliableGames.at(gameId);
     // update your game list by removing the game you joined
@@ -123,7 +123,8 @@ void exitGameOut(){
     else{
         // disconnect from client -- create a discconect method *************
         disconnectFromPlayer(this.currentGame.client.port);
-        // end game session **************
+        // end game session ************** -- not super sure if this is needed
+        endGameSession();
     }
     
     // reset your game
@@ -158,6 +159,23 @@ void unregisterIn(string playerIp){
     }
 }
 
+// helper functions
+
+// connect the client player to the host player - client side
+void connectToHost(Player host){
+
+}
+
+// accepts the connection to the client player - host side
+void acceptClientPlayer(){
+
+}
+
+// disconnects the socket if TCP
+// stops listening for msgs from the other player if UDP
+void disconnectFromPlayer(unsigned int port, string playerIp){
+    
+}
 
 
 
@@ -170,6 +188,7 @@ void setPlayerIp(string ip){
     this.ipAdder = ip;
 }
 
+// set the players ip to the local users ip 
 void setIpAsLocal(){
     char hostname[1024];
     memset (hostname, 0, sizeof(hostname));
