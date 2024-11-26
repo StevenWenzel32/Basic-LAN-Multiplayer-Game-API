@@ -1,6 +1,9 @@
-// This class is meant to be inherited by the knight/host and the slime/client
-// holds the commone functions they both use to interact with the server 
-// also holds the player data
+// This class is the makes the "player"
+// it holds the player data that is unique to each client running the game
+// This allows the player to be either a client or a host for a game
+// this holds the protocols that lets the players connect with each other
+// this holds the main: it listens for other players, sends msgs on broadcast
+// and it starts the game
 
 // my files
 #include "player.hpp"
@@ -304,3 +307,53 @@ void joinGameMsg(string ip){
     // send the baseMsg
     sendUdpMsg(this.playerSd, msg, this.playerinfo);
 }
+
+
+// function with loop to run while in a game
+
+// listen for msgs on the broadcast
+void listenForMsgs(){
+    while (true){
+        // process msgs in new threads
+        processMsgs();
+            
+        // send out any msgs the user wants to send 
+    }
+}
+
+int main (int argc, char* argv[]) {
+    // setup the listening socket for broadcast msgs
+    struct addrinfo* clientinfo = makeAddrinfo("udp", PORT);
+    // make the socket
+    this.broadSd = makeSocket(clientinfo);
+    // set the option to resuse 
+    setSocketReuse(this.broadSd);
+    // turn on the broadcast - for sending 
+    setSocketBroadcast(this.broadSd);
+    // bind the socket - for listening 
+    bindSocket(this.broadSd, clientinfo);
+    // free after being used -- will probably be moved again 
+    freeaddrinfo(clientinfo);
+
+    // setup the socket for sending broadcast msgs
+    // use ipv4
+    this.broadcastAddr.sin_family = AF_INET;
+    // convert the port to network byte order
+    this.broadcastAddr.sin_port = htons(atoi(PORT));
+    // set the boradcast addr
+    this.broadcast.sin_addr.s_addr = inet_addr("255.255.255.255");
+
+    // Thread for listening for broadcast msgs -- always running until shutdown
+    // must make a listenForMsgs() *************
+    thread listenerThread(listenForMsgs, this.broadSd);
+
+    // main thread sends msgs
+    sendMessages(this.broadSd, clientinfo);
+    
+    // make sure the listeing thread has ended before closing
+    listenerThread.join();
+    
+    // close the broadcast socket used for listening and sending
+    closeSocket(this.broadSd);
+    return 0;
+} 
