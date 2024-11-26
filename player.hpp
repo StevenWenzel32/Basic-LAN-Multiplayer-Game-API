@@ -1,6 +1,10 @@
-// This class is meant to be inherited by the knight/host and the slime/client
-// holds the commone functions they both use to interact with the server 
-// also holds the player data
+// This class is the makes the "player"
+// it holds the player data that is unique to each client running the game
+// This allows the player to be either a client or a host for a game
+// this holds the protocols that lets the players connect with each other
+// this holds the main: it listens for other players, sends msgs on broadcast
+// and it starts the game
+// All players are listening and sending on the same port (2087)
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
@@ -42,41 +46,27 @@
 // port to use/ listen on
 #define PORT "2087"
 
+vector<pthread_t> threads; 
+
 // structs 
-// send a msg to the broadcast
-struct announcement {
-    // the length of the msg being sent
-    unsigned int length;
-    // the type of msg being sent
-    unsigned char type;
-    // data to send should be other data packet structs
-    vector<char> payload;
-
-    // constructor with passing in values
-    baseMsg(unsigned char msgType, const char* payloadData, unsigned int payloadSize){
-        // get the payload size and the size of the type var
-        length = payloadSize + sizeof(type);
-        // pass in the type
-        type = msgType;
-        // pass in the payload data and its size
-        payload.assign(payloadData, payloadData + payloadSize);
-    }
-};
-
-// game struct to hold game info
+// game struct to be put into local list of games to join
 struct game{
     // for quick id
     int id = 0;
     // the knight/host/player1
-    Player host;
-    // the slime/client/player2
-    Player client;
-    // # of players in the game
-//    unsigned char players = 0;
-}Game;
+    string hostIp;
+};
+
+// player struct to be put into local list of registered players 
+struct player{
+    // for quick id
+    int id = 0;
+    // how to contact them
+    string ip;
+};
 
 // list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
-vector<int, Player> players;
+unordered_map<int, player> players;
 // used to create player ids
 int playerCounter = 1;
 
@@ -113,9 +103,9 @@ class Player {
 
     // in functions / msg processing
     // puts the player into the player list
-    void registerPlayerIn(string ip, unsigned int port);
+    void registerPlayerIn(string ip);
     // handling the recieving of a notification that a new game was created
-    void createGameIn(struct game newGame);
+    void createGameIn(int gameId, string hostIp);
     // handling the recieving of a notification that a game is full
     void joinGameIn(int gameId);
     // handles revceiving a exitGameMsg -- might not actually need
@@ -130,7 +120,7 @@ class Player {
 
     // helper functions for the above core functions
     // connect the client player to the host player - client side
-    void connectToHost(string type, Player host);
+    void connectToHost(string type, string hostIp);
     // accepts the connection to the client player - host side
     void acceptClientPlayer();
     // disconnects the socket if TCP
@@ -148,7 +138,7 @@ class Player {
     // the port might be unneeded
     // send a broadcast msg to register the player into other players list
     // sending your own ip
-    void registerMsg(string ip, string port);
+    void registerMsg(string ip);
     // send a broadcast msg to unregister the player from player lists
     // sending your own ip
     void unregisterMsg(string ip);
@@ -156,7 +146,7 @@ class Player {
     // might not be needed escentailly sending just a default msg ****
     void exitGameMsg();
     // broadcast the creation of a game, sends the game info
-    void createGameMsg(struct game game);
+    void createGameMsg(int gameId, string hostIp);
     // broadcast that the game you just joined is full, send gameId
     void gameFullMsg(int gameId);
     // tell the host you have joined their game, send your ip and the gameId
@@ -166,12 +156,12 @@ class Player {
 
 //    protected:
     // vars related to the players device
-    // the port the game is running on
-    unsigned int port;
     // the current ip address of the player
-    string ipAddr = "";
+    string ip = "";
     // used to place player in the local unordered map
     int id = 0;
+    // used to show if you are hosting a game
+    bool host = false;
     // if usernames are being used the player can change it at any time
 //    string username;
 
@@ -185,10 +175,9 @@ class Player {
     // the addrinfo for sending on broadcast
     sockaddr_in broadcastAddr{};
 
-
     // vars related to the current session
     // game changes when they leave or join a game
-    struct game currentGame = nullptr;
+    int currentGame = nullptr;
 };
 
 #endif
