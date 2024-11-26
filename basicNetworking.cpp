@@ -5,7 +5,7 @@
 
 // handle making the socket struct for listening -- can make both TCP and UDP, takes in port #
 // can later add in params to change the family and optional flags
-struct addrinfo* makeAddrinfo(string type, int port){
+struct addrinfo* makeAddrinfo(string type, string port){
     // for checking the return of getaddrinfo
     int status;
     // holds the info for the server address
@@ -30,7 +30,7 @@ struct addrinfo* makeAddrinfo(string type, int port){
     server_addr.ai_flags = AI_PASSIVE;
 
     // getaddrinfo and error check in one -- doesn't need an IP/host because this is for listening
-    if ((status = getaddrinfo(NULL, port, &server_addr, &servinfo)) != 0) {
+    if ((status = getaddrinfo(NULL, port.c_str(), &server_addr, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         exit(1);
     }
@@ -39,7 +39,7 @@ struct addrinfo* makeAddrinfo(string type, int port){
 }
 
 // handle making the socket structs -- can make both TCP and UDP sockets, takes in port #
-struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port){
+struct addrinfo* makeAddrinfo(string type, const char* serverIp, string port){
     // for checking the return of getaddrinfo
     int status;
     // holds the info for the client address
@@ -49,7 +49,7 @@ struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port){
     
     // create the struct and address info
     // make sure the struct is empty
-    memset(&client_addr, 0, sizeof client_addr);
+    memset(&client_addr, 0, sizeof(client_addr));
     // doesn't matter if its ipv4 or ipv6
     client_addr.ai_family = AF_UNSPEC;
     // check what type of socket
@@ -62,7 +62,7 @@ struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port){
     }
     
     // getaddrinfo with error check
-    if ((status = getaddrinfo(serverIp, port, &client_addr, &servinfo)) != 0 ) {
+    if ((status = getaddrinfo(serverIp, port.c_str(), &client_addr, &servinfo)) != 0 ) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         exit(1);
     }

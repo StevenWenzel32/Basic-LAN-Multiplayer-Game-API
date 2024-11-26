@@ -145,7 +145,7 @@ class Player {
     void setIpAsLocal();
 
 
-    protected:
+//    protected:
     // vars related to the players device
     // the port the game is running on
     unsigned int port;

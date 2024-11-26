@@ -52,3 +52,13 @@ KNIGHT AND SLIME
 			- uses server to help the start of the game	
 				- match making
 			- the game is run on the clients 
+			
+			
+
+// join the level
+
+    // while loop 
+        // continually manage the clinet/slime players positions and actions
+        // contnually check for updates from the host/knight player
+
+    // while loop when they are outside a level - until the host player disconnects or the client disconnects

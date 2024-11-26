@@ -88,7 +88,7 @@ void joinGameOut(int gameId){
     // send join msg to host - tcp
     joinGameMsg(this.ipAdder, gameId);
     // connect to host
-    connectToHost(avaliableGames.at(gameId).host);
+    connectToHost("tcp", avaliableGames.at(gameId).host);
     // update the currentGame
     this.currentGame = avaliableGames.at(gameId);
     // update your game list by removing the game you joined
@@ -162,8 +162,13 @@ void unregisterIn(string playerIp){
 // helper functions
 
 // connect the client player to the host player - client side
-void connectToHost(Player host){
+// works with tcp and udp
+void connectToHost(string type, Player host){
+    // make the addrinfo
+    struct addrinfo* servinfo = makeAddrinfo(type, host.ipAddr, PORT);
 
+    // make the socket
+    int clientSd = makeSocket(servinfo);
 }
 
 // accepts the connection to the client player - host side
@@ -174,7 +179,7 @@ void acceptClientPlayer(){
 // disconnects the socket if TCP
 // stops listening for msgs from the other player if UDP
 void disconnectFromPlayer(unsigned int port, string playerIp){
-    
+
 }
 
 
