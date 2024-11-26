@@ -177,7 +177,7 @@ int connectToHost(string type, Player host){
 // accepts the connection to the client player - host side
 // returns the new SD
 void acceptClientPlayer(){
-    return acceptConnection(clientSd);
+    return acceptConnection(this.playerSd);
 }
 
 // closes the connection socket or the listening socket

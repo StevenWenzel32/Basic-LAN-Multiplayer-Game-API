@@ -130,12 +130,12 @@ class Player {
 
     // helper functions for the above core functions
     // connect the client player to the host player - client side
-    void connectToHost(Player host);
+    void connectToHost(string type, Player host);
     // accepts the connection to the client player - host side
     void acceptClientPlayer();
     // disconnects the socket if TCP
     // stops listening for msgs from the other player if UDP
-    void disconnectFromPlayer(unsigned int port, string playerIp);
+    void disconnectFromPlayer(int playerSd);
     
 
     // getters and setters
@@ -144,6 +144,25 @@ class Player {
     // set the players ip to the local users ip 
     void setIpAsLocal();
 
+    // msg creation and sending funcs
+    // the port might be unneeded
+    // send a broadcast msg to register the player into other players list
+    // sending your own ip
+    void registerMsg(string ip, string port);
+    // send a broadcast msg to unregister the player from player lists
+    // sending your own ip
+    void unregisterMsg(string ip);
+    // send a msg to the other player that you are leaving the game
+    // might not be needed escentailly sending just a default msg ****
+    void exitGameMsg();
+    // broadcast the creation of a game, sends the game info
+    void createGameMsg(struct game game);
+    // broadcast that the game you just joined is full, send gameId
+    void gameFullMsg(int gameId);
+    // tell the host you have joined their game, send your ip and the gameId
+    void joinGameMsg(string ip);
+    // listen for msgs on the broadcast
+    void listenForMsgs();
 
 //    protected:
     // vars related to the players device
@@ -174,7 +193,6 @@ class Player {
 
 #endif
 
-// update the hpp funtion declarations
 // finish the msg sending functions 
 // add in the proccessing of the msgs recieved 
 // find a way to start the game
