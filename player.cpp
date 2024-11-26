@@ -53,12 +53,24 @@ void listGames(){
 // create a game and braodcast it on the LAN
 void createGameOut(){
     // create a game object 
-    // create a listening port for the host
-    // update your player object
+    struct game newGame;
+    // up the game count 
+    gameCounter++;
+    // give id 
+    newGame.id = gameCounter;
+    // assign yourself as host
+    newGame.host = this;
+    // make sure the client player is empty 
+    newGame.client = nullptr;
+    // create a listening port for the host - just tcp for now will add UDP as well later
+    // use the default port given for listening 
+    makeAddrinfo("tcp", PORT);
     // update your current game
+    this.currentGame = newGame;
     // put the game object into local list
+    avaliableGames.emplace(newGame.id, newGame);
     // broadcast the creation of the game - udp
-    createGameMsg(playerIp);
+    createGameMsg(newGame);
 }
 
 void createGameIn(){

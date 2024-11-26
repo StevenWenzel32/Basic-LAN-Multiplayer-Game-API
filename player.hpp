@@ -39,6 +39,9 @@
 // for the socket related functions and basic msg sends and recieves
 #include "basicNetworking.hpp"
 
+// port to use/ listen on
+#define PORT "2087"
+
 // structs 
 // send a msg to the broadcast
 struct announcement {
@@ -65,27 +68,23 @@ struct game{
     // for quick id
     int id = 0;
     // the knight/host/player1
-    struct player host;
+    Player host;
     // the slime/client/player2
-    struct player client;
+    Player client;
     // # of players in the game
 //    unsigned char players = 0;
 }Game;
 
-// need a list of players
-// expecting around 50 players - class size is less than 45 - does not contain yourself
+// list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
 vector<int, Player> players;
 // used to create player ids
 int playerCounter = 1;
 
-// need a list of games being played -- expecting roughly 25 games to be played at once
+// list of games that can be joined
 // maps the gameId to the game
-unordered_map<int, Game> fullGames;
-// need a list of games that need another player
-// maps the gameId to the game
-unordered_map<int, Game> avaliableGames;
+unordered_map<int, struct game> avaliableGames;
 // counter to create game ids
-int gameCounter;
+int gameCounter = 1;
 
 class Player {
     public: 
@@ -146,7 +145,7 @@ class Player {
 
     // vars related to the current session
     // game changes when they leave or join a game
-    Game currentGame;
+    struct game currentGame;
 };
 
 #endif

@@ -24,8 +24,6 @@
 #include <vector>         // vector bu dur
 
 // hard coded values
-// port to use/ listen on
-#define PORT "2087"
 // # of connection requests for the server to listen to at a time
 // based losely off of the class size
 #define BACKLOG 50
