@@ -8,20 +8,22 @@
 // announces that you are avaliable to play, carries contact info
 // maybe add a player username
 void registerPlayerOut(){
+    // set your ipAddr
+    this.setIpAsLocal();
     // send your ip adder and port on the broadcast msg to the LAN - udp
     registerMsg(this.ipAdder, this.port);
 }
 
 // puts the player into the player list
-void registerPlayerIn(int ip, unsigned port){
+void registerPlayerIn(string ip, unsigned port){
     // up the player count
     playerCounter++;
     // create a new player object
-    struct player newPlayer;
+    Player newPlayer;
     // put in the new id
     newPlayer.id = playerCounter;
     // get the players ip
-    newPlayer.ip = ip;
+    newPlayer.ipAdder = ip;
     // get the players port
     newPlayer.port = port;
     // put the player into the players list
@@ -31,8 +33,21 @@ void registerPlayerIn(int ip, unsigned port){
 // get a list of avaiable games to join -- instead of query server use clients own list
 // can possibly show who is playing if using usernames
 void listGames(){
-    // print out the local list of games
+    // check if the list is empty 
+    if (avaliableGames.empty()){
+        cout << "no avalible games, try again later" << endl;
+        return;
+    }
 
+    // start the list
+    cout << "Game List: " << endl;
+
+    // print out the local list of games
+    for (auto i = avaliableGames.begin(); i != avaliableGames.end(); ++i){
+        cout << "Game ID: " << i->first << endl;
+    }
+    // end the list 
+    cout << "----------END OF LIST----------" << endl;
 }
 
 // create a game and braodcast it on the LAN
@@ -97,6 +112,9 @@ void unregisterOut(){
 void unregisterIn(){
 
 }
+
+
+
 
 // getters and setters
 string getPlayerIp(){
