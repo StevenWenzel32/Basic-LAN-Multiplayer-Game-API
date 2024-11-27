@@ -8,13 +8,19 @@
 // my files
 #include "player.hpp"
 
+// handles the shut down of the listening loop
+void signalHandler(int signum) {
+    cout << "Received signal: " << signum << ". Initiating shutdown..." << std::endl;
+    shutdown_flag = 1;
+}
+
 // announces that you are avaliable to play, carries contact info
 // maybe add a player username
 void registerPlayerOut(){
     // set your ipAddr
-    this.setIpAsLocal();
+    this->setIpAsLocal();
     // send your ip addr and port on the broadcast msg to the LAN - udp
-    registerMsg(this.ip);
+    registerMsg(this->ip);
 }
 
 // puts the player into the player list
@@ -58,11 +64,11 @@ void createGameOut(){
     // give id 
     int gameId = gameCounter;
     // update your current game
-    this.currentGame = gameId;
+    this->currentGame = gameId;
     // mark yourself as host 
-    this.host = true;
+    this->host = true;
     // broadcast the creation of the game - udp 
-    createGameMsg(gameId, this.ip);
+    createGameMsg(gameId, this->ip);
     // start up the game *************
 }
 
@@ -83,11 +89,11 @@ void createGameIn(int gameId, string hostIp){
 // notify the host of the game that you are joining, broadcast the game is full
 void joinGameOut(int gameId){
     // send join msg to host - tcp
-    joinGameMsg(this.ip, gameId);
+    joinGameMsg(this->ip, gameId);
     // connect to host
     connectToHost("tcp", avaliableGames.at(gameId).hostIp);
     // update the currentGame
-    this.currentGame = gameId;
+    this->currentGame = gameId;
     // update your game list by removing the game you joined
     avaliableGames.erase(gameId);
     // broadcast that the game is full and should be removed from the list of games
@@ -97,7 +103,7 @@ void joinGameOut(int gameId){
 // handling the recieving of a notification that a game is full
 void joinGameIn(int gameId){
     // check if the gameId is the game you are in
-    if (gameId == this.currentGame){
+    if (gameId == this->currentGame){
         // send msg to the terminal
         cout << "A new player has joined your game" << endl;
     }
@@ -108,24 +114,24 @@ void joinGameIn(int gameId){
 // leave the game - handles both cases of the calling player being host and client 
 void exitGameOut(){
     // if host
-    if (this.host){
+    if (this->host){
         // disconnect from client
-        disconnectFromPlayer(this.playerSd);
+        disconnectFromPlayer(this->playerSd);
         // end game session ************** -- not super sure if this is needed
         endGameSession();
     } 
     // if not host
     else{
         // send exit msg to the host - tcp
-        exitGameMsg(this.playerSd);
+        exitGameMsg(this->playerSd);
         // disconnect from host
-        disconnectFromPlayer(this.playerSd);
+        disconnectFromPlayer(this->playerSd);
         // broadcast out the game is back in list
-        createGameMsg(this.currentGame, this.ip);
+        createGameMsg(this->currentGame, this->ip);
     }
     
     // reset your game
-    this.currentGame = 0;
+    this->currentGame = 0;
 }
 
 // handles revceiving a exitGameMsg -- might not actually need
@@ -137,9 +143,9 @@ void exitGameIn(){
 // remove yourself from your player list and broadcast to others to remove you
 void unregisterOut(){
     // broadcast out that others should remove you from player list
-    unregisterMsg(this.ip);
+    unregisterMsg(this->ip);
     // reset id
-    this.id = 0;
+    this->id = 0;
 }
 
 // handles reciving a broadcasted unregisterMsg -- might not actually need a list of players
@@ -168,7 +174,7 @@ int connectToHost(string type, string hostIp){
 // accepts the connection to the client player - host side
 // returns the new SD
 void acceptClientPlayer(){
-    return acceptConnection(this.playerSd);
+    return acceptConnection(this->playerSd);
 }
 
 // closes the connection socket or the listening socket
@@ -178,11 +184,11 @@ void disconnectFromPlayer(int playerSd){
 
 // getters and setters
 string getPlayerIp(){
-    return this.ip;
+    return this->ip;
 }
 
 void setPlayerIp(string ip){
-    this.ip = ip;
+    this->ip = ip;
 }
 
 // set the players ip to the local users ip 
@@ -217,7 +223,7 @@ void setIpAsLocal(){
     inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr));
 
     freeaddrinfo(res);
-    this.ip = ipStr;
+    this->ip = ipStr;
 }
 
 
@@ -234,7 +240,7 @@ void registerMsg(string ip){
     // 1 = register msg
     struct baseMsg msg(1, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSd, msg, this.broadinfo);
+    sendUdpMsg(this->broadSd, msg, this->broadinfo);
 }
 
 // send a broadcast msg to unregister the player from player lists
@@ -247,7 +253,7 @@ void unregisterMsg(string ip){
     // 2 = "unregister"
     struct baseMsg msg(2, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSd, msg, this.broadinfo);
+    sendUdpMsg(this->broadSd, msg, this->broadinfo);
 }
 
 // send a msg to the other player that you are leaving the game
@@ -259,7 +265,7 @@ void exitGameMsg(){
     // 3 = "exitGame"
     struct baseMsg msg(3, payload.c_str, payload.size());
     // send the baseMsg
-    sendUdpMsg(this.playerSd, msg, this.playerinfo);
+    sendUdpMsg(this->playerSd, msg, this->playerinfo);
 }
 
 // broadcast the creation of a game, sends the game info
@@ -271,7 +277,7 @@ void createGameMsg(int gameId, string hostIp){
     // 4 = "createGame"
     struct baseMsg msg(4, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSd, msg, this.broadinfo);
+    sendUdpMsg(this->broadSd, msg, this->broadinfo);
 }
 
 // broadcast that the game you just joined is full, send gameId
@@ -283,7 +289,7 @@ void gameFullMsg(int gameId){
     // 5 = "gameFull"
     struct baseMsg msg(5, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSd, msg, this.broadinfo);
+    sendUdpMsg(this->broadSd, msg, this->broadinfo);
 }
 
 // tell the host you have joined their game, send your ip and the gameId
@@ -295,7 +301,7 @@ void joinGameMsg(string ip){
     // 6 = "joinGame"
     struct baseMsg msg(6, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.playerSd, msg, this.playerinfo);
+    sendUdpMsg(this->playerSd, msg, this->playerinfo);
 }
 
 // make a new thread, send the msg recieved
@@ -343,18 +349,17 @@ void* processMsgs(void* data){
     else if (msg->type == 4){
         // break up the payload by length
         int gameId;
-        string hostIp;
+        string hostIp(msg->payload.begin() + sizeof(int), msg->payload.end());
         // fill in the host ip
-        memcpy(&hostIp, msg->payload.data(), 256);
-        // fill in the game id
-        memcpy(&gameId, msg->payload.data(), sizeof(int));
+        memcpy(&gameId, msg->payload, sizeof(int));
         // send the payload
         createGameIn(gameId, hostIp);
     } 
     // game full/ a game has been joined
     else if (msg->type == 5 || msg->type == 6){
         // create storage the length of the payload
-        int gameId = msg->payload;
+        int gameId;
+        memcpy(&gameId, msg->payload, sizeof(int));
         // send the payload
         joinGameIn(gameId);
     } else {
@@ -368,9 +373,9 @@ void* processMsgs(void* data){
 
 // listen for msgs on the broadcast
 void listenForMsgs(){
-    while (true){
+    while (!shutdown_flag){
         // read in a msg here 
-        baseMsg* msg = receiveNonblockingUdp(this.broadSd, this.broadinfo);
+        baseMsg* msg = receiveNonblockingUdp(this->broadSd, this->broadinfo);
         // make sure there is a msg 
         if (msg != nullptr){
             // make thread and have them run processMsgs() and pass in the msg recieved
@@ -382,37 +387,40 @@ void listenForMsgs(){
 }
 
 int main (int argc, char* argv[]) {
+    // Set up signal handling for SIGINT and SIGTERM so that the client can stop listening nicely
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
     // setup the listening socket for broadcast msgs
     struct addrinfo* clientinfo = makeAddrinfo("udp", PORT);
     // make the socket
-    this.broadSd = makeSocket(clientinfo);
+    this->broadSd = makeSocket(clientinfo);
     // set the option to resuse 
-    setSocketReuse(this.broadSd);
+    setSocketReuse(this->broadSd);
     // turn on the broadcast - for sending 
-    setSocketBroadcast(this.broadSd);
+    setSocketBroadcast(this->broadSd);
     // bind the socket - for listening 
-    bindSocket(this.broadSd, clientinfo);
+    bindSocket(this->broadSd, clientinfo);
     // free after being used -- will probably be moved again 
     freeaddrinfo(clientinfo);
 
     // setup the socket for sending broadcast msgs
     // use ipv4
-    this.broadcastAddr.sin_family = AF_INET;
+    this->broadcastAddr.sin_family = AF_INET;
     // convert the port to network byte order
-    this.broadcastAddr.sin_port = htons(atoi(PORT));
+    this->broadcastAddr.sin_port = htons(atoi(PORT));
     // set the boradcast addr
-    this.broadcast.sin_addr.s_addr = inet_addr("255.255.255.255");
+    this->broadcast.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     // Thread for listening for broadcast msgs -- always running until shutdown
-    thread listenerThread(listenForMsgs, this.broadSd);
+    thread listenerThread(listenForMsgs, this->broadSd);
 
     // main thread sends msgs
-    sendMessages(this.broadSd, clientinfo);
+    sendMessages(this->broadSd, clientinfo);
     
     // make sure the listeing thread has ended before closing
     listenerThread.join();
     
     // close the broadcast socket used for listening and sending
-    closeSocket(this.broadSd);
+    closeSocket(this->broadSd);
     return 0;
 } 

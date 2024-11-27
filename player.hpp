@@ -38,6 +38,7 @@
 #include <unistd.h>      // For gethostname
 #include <netdb.h>       // For getaddrinfo
 #include <arpa/inet.h>   // For inet_ntop
+#include <signal.h>       // for the shutdown signal
 
 // my files
 // for the socket related functions and basic msg sends and recieves
@@ -46,6 +47,7 @@
 // port to use/ listen on
 #define PORT "2087"
 
+volatile sig_atomic_t shutdown_flag = 0;
 vector<pthread_t> threads; 
 
 // structs 
