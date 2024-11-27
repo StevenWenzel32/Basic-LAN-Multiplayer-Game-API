@@ -177,7 +177,7 @@ class Player {
 
     // vars related to the current session
     // game changes when they leave or join a game
-    int currentGame = nullptr;
+    int currentGame = 0;
 };
 
 #endif

@@ -158,9 +158,9 @@ void unregisterIn(string playerIp){
 
 // connect the client player to the host player - client side
 // works with tcp and udp, returns the SD
-int connectToHost(string type, Player host){
+int connectToHost(string type, string hostIp){
     // make the addrinfo
-    struct addrinfo* servinfo = makeAddrinfo(type, host.ipAddr, PORT);
+    struct addrinfo* servinfo = makeAddrinfo(type, hostIp, PORT);
     // make the socket
     return makeSocket(servinfo);
 }
@@ -178,11 +178,11 @@ void disconnectFromPlayer(int playerSd){
 
 // getters and setters
 string getPlayerIp(){
-    return this.ipAddr;
+    return this.ip;
 }
 
 void setPlayerIp(string ip){
-    this.ipAddr = ip;
+    this.ip = ip;
 }
 
 // set the players ip to the local users ip 
@@ -217,7 +217,7 @@ void setIpAsLocal(){
     inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr));
 
     freeaddrinfo(res);
-    this.ipAddr = ipStr;
+    this.ip = ipStr;
 }
 
 
@@ -234,7 +234,7 @@ void registerMsg(string ip){
     // 1 = register msg
     struct baseMsg msg(1, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+    sendUdpMsg(this.broadSd, msg, this.broadinfo);
 }
 
 // send a broadcast msg to unregister the player from player lists
@@ -247,7 +247,7 @@ void unregisterMsg(string ip){
     // 2 = "unregister"
     struct baseMsg msg(2, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+    sendUdpMsg(this.broadSd, msg, this.broadinfo);
 }
 
 // send a msg to the other player that you are leaving the game
@@ -259,20 +259,19 @@ void exitGameMsg(){
     // 3 = "exitGame"
     struct baseMsg msg(3, payload.c_str, payload.size());
     // send the baseMsg
-    sendUdpMsg(this.playerSocket, msg, this.playerinfo);
+    sendUdpMsg(this.playerSd, msg, this.playerinfo);
 }
 
 // broadcast the creation of a game, sends the game info
-void createGameMsg(struct game game){
+void createGameMsg(int gameId, string hostIp){
     // put the passed in values into an acceptable payload
-    // put in a function to serialize the game info **************
-    const char* payload = game.id;
-    payload += game.host
+    char payload[256];
+    snprintf(payload, sizeof(payload), "%d:%s", gameId, hostIp);
     // create the baseMsg
     // 4 = "createGame"
     struct baseMsg msg(4, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+    sendUdpMsg(this.broadSd, msg, this.broadinfo);
 }
 
 // broadcast that the game you just joined is full, send gameId
@@ -284,7 +283,7 @@ void gameFullMsg(int gameId){
     // 5 = "gameFull"
     struct baseMsg msg(5, payload, strlen(payload));
     // send the baseMsg
-    sendUdpMsg(this.broadSendSd, msg, this.broadinfo);
+    sendUdpMsg(this.broadSd, msg, this.broadinfo);
 }
 
 // tell the host you have joined their game, send your ip and the gameId
@@ -342,11 +341,15 @@ void* processMsgs(void* data){
     } 
     // create game
     else if (msg->type == 4){
-        // deserailize the game data
-        struct game game;
-        memcpy(&game, msg->payload.data(), sizeof(game));
+        // break up the payload by length
+        int gameId;
+        string hostIp;
+        // fill in the host ip
+        memcpy(&hostIp, msg->payload.data(), 256);
+        // fill in the game id
+        memcpy(&gameId, msg->payload.data(), sizeof(int));
         // send the payload
-        createGameIn(game);
+        createGameIn(gameId, hostIp);
     } 
     // game full/ a game has been joined
     else if (msg->type == 5 || msg->type == 6){
