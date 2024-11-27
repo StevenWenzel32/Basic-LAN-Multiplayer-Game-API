@@ -51,6 +51,8 @@
 
 // flag to exit loops when shutting down
 volatile sig_atomic_t shutdown_flag = 0;
+// to mark if the game should be ended and the player should return to being able to send new msgs
+bool gameEnded = false;
 // holds threads to make sure they are cleaned up nice later
 vector<pthread_t> threads; 
 // mutex to protect the players map

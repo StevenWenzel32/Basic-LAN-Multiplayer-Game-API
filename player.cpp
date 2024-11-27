@@ -414,7 +414,7 @@ void sendMsgs(int broadSd, struct addrinfo* clientinfo){
     char buffer[1024];
 
     // accept input from the user
-    while(!shutdown_flag){
+    while(!shutdown_flag || !gameEnded){
         // prompt user for input
         cout << "#: " << endl;
         // get their response
