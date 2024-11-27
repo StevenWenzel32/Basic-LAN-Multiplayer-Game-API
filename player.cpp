@@ -390,6 +390,78 @@ void listenForMsgs(){
     }
 }
 
+// print out the help message to the user
+void printHelp(){
+    cout << "These are the avaliable commands:" << endl;
+    cout << "   help                - Display this message" << endl;
+    cout << "   register            - Registers you into the player list" << endl;
+    cout << "   listGames          - Lists the games avaliable to join" << endl;
+    cout << "   createGame         - Host a game and wait for another player to join" << endl;
+    cout << "   joinGame <gameId>  - Join the game assigned to the gameId" << endl;
+    cout << "   exitGame           - Exit your current game" << endl;
+    cout << "   unregister          - Unregister yourself from the player list" << endl;
+}
+
+// main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
+void sendMsgs(int broadSd, struct addrinfo* clientinfo){
+    // print out a msg to the terminal prompting user to enter a command
+    cout << "Welcome to the world of high stakes Tic Tac Toe (gambling will come in future update)" << endl;
+    cout << "When you see this #: it is prompt to enter a command" << endl;
+    printHelp();
+    // store the input from the player
+    string input;
+    char buffer[1024];
+
+    // accept input from the user
+    while(!shutdown_flag){
+        // prompt user for input
+        cout << "#: " << endl;
+        // get their response
+        getline(cin, input);
+
+        // split up the input
+        // put the string into the stream
+        istringstream stream(input);
+        // vector to store the tokens
+        vector<string> tokens;
+        // holds the current token
+        string token;
+
+        // break up the stream by spaces
+        while (stream >> token){
+            tokens.push_back(token);
+        }
+
+        // if nothing was given
+        if (tokens.empty()){
+            continue; 
+        }
+        // check for the basic commands
+        else if (tokens[0] == "exitGame"){
+            exitGameOut();
+        } else if (tokens[0] == "help"){
+            printHelp();
+        } else if (tokens[0] == "register"){
+            registerPlayerOut();
+        } else if (tokens[0] == "listGames"){
+            listGames();
+        } else if (tokens[0] == "createGames"){
+            createGameOut();
+        } else if (tokens[0] == "joinGame"){
+            // grab the game Id
+            string gameId = tokens[1];
+            // check that the id is a number
+            if (all_of(gameId.begin(), gameId.end(), isdigit)){
+                joinGameOut(gameId);
+            }
+        } else if (tokens[0] == "unregister"){
+            unregisterOut();
+        } else {
+            cout << "ERROR: Unknown command" << endl;
+        }
+    }
+}
+
 int main (int argc, char* argv[]) {
     // Set up signal handling for SIGINT and SIGTERM so that the client can stop listening nicely
     signal(SIGINT, signalHandler);
@@ -419,8 +491,8 @@ int main (int argc, char* argv[]) {
     // Thread for listening for broadcast msgs -- always running until shutdown
     thread listenerThread(listenForMsgs, this->broadSd);
 
-    // main thread sends msgs
-    sendMessages(this->broadSd, clientinfo);
+    // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
+    sendMsgs(this->broadSd, clientinfo);
     
     // make sure the listening thread has ended before closing
     listenerThread.join();

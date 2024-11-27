@@ -23,7 +23,6 @@
 #include <errno.h>        // errno
 #include <fstream>        // ofstream for file creation
 #include <netdb.h>        // gethostbyname
-#include <sstream>        // for stringstream stuff
 #include <random>         // for random #
 #include <chrono>         // for steady_clock and timer stuff
 #include <queue>          // for queue, duh
@@ -40,6 +39,8 @@
 #include <arpa/inet.h>   // For inet_ntop
 #include <signal.h>      // for the shutdown signal
 #include <mutex>         // for mutexes
+#include <sstream>       // for stringstream stuff
+#include <cctype>        // For std::isdigit
 
 // my files
 // for the socket related functions and basic msg sends and recieves
@@ -144,6 +145,8 @@ class Player {
 
     // process the messages being sent over broadcast
     void* processMsgs(void* data);
+    // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
+    sendMsgs(this->broadSd, clientinfo);
     // listen for msgs on the broadcast
     void listenForMsgs();
 
@@ -195,7 +198,6 @@ class Player {
 
 #endif
 
-// function for listening multitrheaded and protected - mutexs
 // function for sending msgs
     // if joining a game this will start a new thread that uses tcp and stop and wait for sending game data 
 // start the tic tac toe protocols
