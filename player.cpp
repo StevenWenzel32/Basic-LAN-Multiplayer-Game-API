@@ -69,7 +69,8 @@ void createGameOut(){
     this->host = true;
     // broadcast the creation of the game - udp 
     createGameMsg(gameId, this->ip);
-    // start up the game *************
+    // start up the game - this is in the tictactoe protocols file *************
+    startGame();
 }
 
 // handling the recieving of a notification that a new game was created
@@ -117,8 +118,8 @@ void exitGameOut(){
     if (this->host){
         // disconnect from client
         disconnectFromPlayer(this->playerSd);
-        // end game session ************** -- not super sure if this is needed
-        endGameSession();
+        // end game session ************** -- not super sure if this is needed -- but if it is it will be in the tictactoe protocols
+        endGame();
     } 
     // if not host
     else{
@@ -180,15 +181,6 @@ void acceptClientPlayer(){
 // closes the connection socket or the listening socket
 void disconnectFromPlayer(int playerSd){
     closeSocket(playerSd);
-}
-
-// getters and setters
-string getPlayerIp(){
-    return this->ip;
-}
-
-void setPlayerIp(string ip){
-    this->ip = ip;
 }
 
 // set the players ip to the local users ip 
@@ -390,6 +382,7 @@ int main (int argc, char* argv[]) {
     // Set up signal handling for SIGINT and SIGTERM so that the client can stop listening nicely
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
+
     // setup the listening socket for broadcast msgs
     struct addrinfo* clientinfo = makeAddrinfo("udp", PORT);
     // make the socket
@@ -417,7 +410,7 @@ int main (int argc, char* argv[]) {
     // main thread sends msgs
     sendMessages(this->broadSd, clientinfo);
     
-    // make sure the listeing thread has ended before closing
+    // make sure the listening thread has ended before closing
     listenerThread.join();
     
     // close the broadcast socket used for listening and sending
