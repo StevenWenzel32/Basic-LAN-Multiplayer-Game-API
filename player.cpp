@@ -23,7 +23,7 @@ void registerPlayerOut(){
     registerMsg(this->ip);
 }
 
-// puts the player into the player list
+// puts the player into the player list -- need mutexs
 void registerPlayerIn(string ip){
     // up the player count
     playerCounter++;
@@ -33,6 +33,8 @@ void registerPlayerIn(string ip){
     newPlayer.id = playerCounter;
     // get the players ip
     newPlayer.ip = ip;
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(playersMutex);
     // put the player into the players list
     players.emplace(newPlayer.id, newPlayer);
 }
@@ -40,6 +42,8 @@ void registerPlayerIn(string ip){
 // get a list of avaiable games to join -- instead of query server use clients own list
 // can possibly show who is playing if using usernames
 void listGames(){
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(gamesMutex);
     // check if the list is empty 
     if (avaliableGames.empty()){
         cout << "no avalible games, try again later" << endl;
@@ -73,7 +77,7 @@ void createGameOut(){
     startGame();
 }
 
-// handling the recieving of a notification that a new game was created
+// handling the recieving of a notification that a new game was created -- need mutexs
 void createGameIn(int gameId, string hostIp){
     // up your local gameCounter
     gameCounter++;
@@ -83,6 +87,8 @@ void createGameIn(int gameId, string hostIp){
     newGame.id = gameCounter;
     // fill in host
     newGame.hostIp = hostIp;
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(gamesMutex);
     // add the given game to your local game list
     avaliableGames.emplace(gameCounter, newGame);
 }
@@ -91,6 +97,8 @@ void createGameIn(int gameId, string hostIp){
 void joinGameOut(int gameId){
     // send join msg to host - tcp
     joinGameMsg(this->ip, gameId);
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(gamesMutex);
     // connect to host
     connectToHost("tcp", avaliableGames.at(gameId).hostIp);
     // update the currentGame
@@ -101,13 +109,15 @@ void joinGameOut(int gameId){
     gameFullMsg(gameId);
 }
 
-// handling the recieving of a notification that a game is full
+// handling the recieving of a notification that a game is full -- need mutexs
 void joinGameIn(int gameId){
     // check if the gameId is the game you are in
     if (gameId == this->currentGame){
         // send msg to the terminal
         cout << "A new player has joined your game" << endl;
     }
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(gamesMutex);
     // remove the game from the list
     avaliableGames.erase(gameId);
 }
@@ -149,8 +159,10 @@ void unregisterOut(){
     this->id = 0;
 }
 
-// handles reciving a broadcasted unregisterMsg -- might not actually need a list of players
+// handles reciving a broadcasted unregisterMsg -- might not actually need a list of players -- need mutexs
 void unregisterIn(string playerIp){
+    // lock the mutex before accessing the shared memory 
+    lock_guard<mutex> lock(playersMutex);
     // search the map for the player that matches
     for (auto i = players.begin(); i != players.end(); ++i){
         // if the same ip

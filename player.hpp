@@ -38,17 +38,24 @@
 #include <unistd.h>      // For gethostname
 #include <netdb.h>       // For getaddrinfo
 #include <arpa/inet.h>   // For inet_ntop
-#include <signal.h>       // for the shutdown signal
+#include <signal.h>      // for the shutdown signal
+#include <mutex>         // for mutexes
 
 // my files
 // for the socket related functions and basic msg sends and recieves
 #include "basicNetworking.hpp"
 
-// port to use/ listen on
+// port to use to listen and send on broadcast
 #define PORT "2087"
 
+// flag to exit loops when shutting down
 volatile sig_atomic_t shutdown_flag = 0;
+// holds threads to make sure they are cleaned up nice later
 vector<pthread_t> threads; 
+// mutex to protect the players map
+mutex playersMutex;
+// mutex to protect the game map
+mutex gamesMutex;
 
 // structs 
 // game struct to be put into local list of games to join
@@ -188,7 +195,6 @@ class Player {
 
 #endif
 
-// update the functions in the player.hpp
 // function for listening multitrheaded and protected - mutexs
 // function for sending msgs
     // if joining a game this will start a new thread that uses tcp and stop and wait for sending game data 
