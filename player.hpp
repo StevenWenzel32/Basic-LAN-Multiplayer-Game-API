@@ -128,13 +128,17 @@ class Player {
     // disconnects the socket if TCP
     // stops listening for msgs from the other player if UDP
     void disconnectFromPlayer(int playerSd);
-    
-
-    // getters and setters
-    string getPlayerIp();
-    void setPlayerIp(string ip);
+    // to help exit loops and shut down nicely 
+    void signalHandler(int signum);
+    // make a new thread, send the msg recieved
+    pthread_t makeThread(baseMsg* msg);
     // set the players ip to the local users ip 
     void setIpAsLocal();
+
+    // process the messages being sent over broadcast
+    void* processMsgs(void* data);
+    // listen for msgs on the broadcast
+    void listenForMsgs();
 
     // msg creation and sending funcs
     // the port might be unneeded
@@ -184,9 +188,8 @@ class Player {
 
 #endif
 
-// finish the msg sending functions 
-// add in the proccessing of the msgs recieved 
-// find a way to start the game
-// function for listening multitrheaded and protected
+// update the functions in the player.hpp
+// function for listening multitrheaded and protected - mutexs
 // function for sending msgs
     // if joining a game this will start a new thread that uses tcp and stop and wait for sending game data 
+// start the tic tac toe protocols

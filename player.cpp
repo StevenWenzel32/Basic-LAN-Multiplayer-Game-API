@@ -9,7 +9,7 @@
 #include "player.hpp"
 
 // handles the shut down of the listening loop
-void signalHandler(int signum) {
+void signalHandler(int signum){
     cout << "Received signal: " << signum << ". Initiating shutdown..." << std::endl;
     shutdown_flag = 1;
 }
