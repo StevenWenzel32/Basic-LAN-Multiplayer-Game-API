@@ -198,6 +198,4 @@ class Player {
 
 #endif
 
-// function for sending msgs
-    // if joining a game this will start a new thread that uses tcp and stop and wait for sending game data 
 // start the tic tac toe protocols

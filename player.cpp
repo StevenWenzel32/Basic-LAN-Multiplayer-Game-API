@@ -403,6 +403,7 @@ void printHelp(){
 }
 
 // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
+// when a game gets started through here the game will take over the thread that this has been called in - in this case main
 void sendMsgs(int broadSd, struct addrinfo* clientinfo){
     // print out a msg to the terminal prompting user to enter a command
     cout << "Welcome to the world of high stakes Tic Tac Toe (gambling will come in future update)" << endl;
