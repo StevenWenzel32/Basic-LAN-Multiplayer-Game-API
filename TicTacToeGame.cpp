@@ -191,17 +191,25 @@ void readMsg(){
     // check if the msg type is a move
     if (msg->type == 1){
         // put the payload into a sstream
-
+        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end()));
         // parse the payload
-        int x = ;
-        int y = ;
-        // feed it into process move
-        processMove(x, y, host);
+        int x, y;
+        if (payloadStream >> x >> y){
+            // feed it into process move
+            processMove(x, y, host);
+        } else {
+            cerr << "ERROR: bad move given" << endl;
+        }
     } else if (msg->type == 2){
         // put the payload into a sstream
-        // set your grid to the grid received *****************
-        char newGrid[3][3];
-        newGrid = msg->payload;
+        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end()));
+        // set your grid to the grid received
+        for (int i = 0; i < 3; i++){
+            for (int j = 0; j < 3; j++){
+                payloadStream >> grid[i][j];
+            }
+        }
+        
     } else {
         cerr << "ERROR: Unknown game msg type" << endl;
     }

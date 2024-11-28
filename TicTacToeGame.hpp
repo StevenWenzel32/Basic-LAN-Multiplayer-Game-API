@@ -42,6 +42,5 @@ void startGame();
 #endif
 
 
-// finish readMsg() in game
 // update tic potocols.hpp funcs
 // finish tic protoocls.cpp
