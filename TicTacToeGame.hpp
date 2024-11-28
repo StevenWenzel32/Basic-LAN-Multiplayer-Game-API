@@ -40,3 +40,10 @@ void movePrompt();
 void startGame();
 
 #endif
+
+
+// finish readMsg() in game
+// finish movePrompt() in game
+// modify recieveTcpBlocking() in basic networking
+// update tic potocols.hpp funcs
+// finish tic protoocls.cpp

@@ -186,7 +186,7 @@ void printGrid(){
 // read in the msgs and pass them off for processing
 void readMsg(){
     // read in the msg -- tic protocols related **********
-
+    baseMsg* msg = receiveBlockingTcp();
     // check if the msg type is a move
     if (type == 1){
         // feed it into process move

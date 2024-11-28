@@ -199,5 +199,3 @@ class Player {
 };
 
 #endif
-
-// start the tic tac toe protocols
