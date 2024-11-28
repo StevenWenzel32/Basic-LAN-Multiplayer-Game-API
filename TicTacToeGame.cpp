@@ -185,18 +185,31 @@ void printGrid(){
 
 // read in the msgs and pass them off for processing
 void readMsg(){
-    // read in the msg -- tic protoocols related **********
+    // read in the msg -- tic protocols related **********
 
     // check if the msg type is a move
     if (type == 1){
         // feed it into process move
         processMove();
     } else if (type == 2){
-        // feed it into procees state
+        // set your grid to the grid received *****************
 
     } else {
         cerr << "ERROR: Unknown game msg type" << endl;
     }
+}
+
+// prompt the user for their move and feeds it into processMove()
+void movePrompt(){
+    // send msg to user
+    cout << "Please enter your move as a coordinate point using a space (ex: 1 2): " << endl;
+    cout << "Your move: ";
+    // check for user input *********
+
+    // parse the user input *********
+
+    // process your move ************
+    processMove(x, y, host);
 }
 
 // start a game and the make the player who started it the host -- the game logic "main"
@@ -211,34 +224,26 @@ void startGame(){
 
     // loop through sending and retreiving moves and states -- while the game is still playing
     while (win == 0){
+        // other players turn
+        // check if there is a move to read in -- blocking
+        readMsg();
+        // print out new grid
+        printGrid();
+
+        // your turn 
+        // prompt the user for their move
+        movePrompt();
+        // print out the new grid
+        printGrid();
+
         // check if host
         if (this.host){
-            // other players turn
-            // check if there is a move to read in -- blocking
-            readMsg();
-            // process their move
-            // print out new grid
-            printGrid();
-
-            // your turn 
-            // process your move
-            processMove(x, y, host);
-            // print out the new grid
-            printGrid();
-            // send the game state
-            sendState();
+            // send the new game state/grid to the client
+            sendState(grid);
         } 
         // if client
         else {
-            // other players turn
-            // check if there is a state to read in -- blocking
-            read
-            // process the game state
-            // print out the grid
-            printGrid();
-
-            // your turn
-            // send your move
+            // send your move to host
             sendMove();
         }
     }

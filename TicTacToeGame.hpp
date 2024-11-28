@@ -34,6 +34,8 @@ void gameWin(char mark);
 void printGrid();
 // read in the msgs and pass them off for processing
 void readMsg();
+// prompt the user for their move and feeds it into processMove()
+void movePrompt();
 // start a game and the make the player who started it the host -- the game logic "main"
 void startGame();
 
