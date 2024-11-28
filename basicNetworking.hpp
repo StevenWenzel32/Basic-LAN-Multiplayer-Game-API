@@ -47,7 +47,7 @@ struct baseMsg {
     // constructor with passing in values
     baseMsg(unsigned char msgType, const char* payloadData, unsigned int payloadSize){
         // get the payload size and the size of the type var
-        length = payloadSize + sizeof(type);
+        length = payloadSize;
         // pass in the type
         type = msgType;
         // pass in the payload data and its size
@@ -108,7 +108,7 @@ void sendTcpMsg(int sd, const baseMsg& message);
 baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* servinfo);
 
 // receive msg, blocking/stop and wait, returns msg as char* - tcp
-//char* receiveBlockingTcp(int sd);
+baseMsg* receiveBlockingTcp(int sd);
 
 // this is being used
 // this is a great example of how the other receives should be made later on ***

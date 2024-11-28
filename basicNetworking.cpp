@@ -320,44 +320,63 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
     return msg;
 }
 
-// // receive msg, blocking/stop and wait - tcp
-// char* receiveBlockingTcp(int sd){
-//     // "buffer" for reading in the server response
-//     char buffer[BUFFER_SIZE];
-//     // hold the complete message
-//     string message;
-//     // count the bytes read
-//     int nRead;
+// receive msg, blocking/stop and wait - tcp
+baseMsg receiveBlockingTcp(int sd){
+    // define the header size
+    const size_t HEADER_SIZE = sizeof(unsigned int) + sizeof(unsigned char);
+    // to store the msg header
+    char headerBuffer[HEADER_SIZE];
 
-//     while (true){
-//         // read the data from the socket
-//         nRead = recv(sd, &buffer, BUFFER_SIZE - 1, 0);
-//         if (nRead == -1){
-//             cerr << "Error reading from socket: SD = " << sd << endl; 
-//             return nullptr; 
-//         } else if (nRead == 0) {
-//             cerr << "Client closed the connection" << endl;
-//             break;
-//         } 
+    // count the bytes read
+    int totalRead = 0;
+    // read in the header
+    while (totalRead < HEADER_SIZE){
+        // read the data from the socket
+        int nRead = recv(sd, headerBuffer + totalRead, HEADER_SIZE - totalRead, 0);
+        if (nRead == -1){
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+            return nullptr; 
+        } else if (nRead == 0) {
+            cerr << "Client closed the connection" << endl;
+            return nullptr;
+        }
+        // add the current bytes read to the total
+        totalRead += nRead;
+    }
 
-//         // null terminate th buffer to help other functions work right
-//         buffer[nRead] = '\0';
-//         // add what is read to the request
-//         request.append(buffer);
+    // get the header info
+    unsigned int payloadLength = 0;
+    unsigned char type = 0;
+    
+    // put the header info into their vars
+    memcpy(&payloadLength, headerBuffer, sizeof(payloadLength));
+    memcpy(&type, headerBuffer + sizeof(payloadLength), sizeof(type));
+    
+    // convert to host byte order
+    payloadLength = ntohl(payloadLength);
 
-//         // check for the end of the msg and exit if found -- means we got the whole message
-//         if (request.find(MSG_END) != string::npos){
-//             break;
-//         }
-//     }
+    // read in the payload 
+    vector<char> payload(payloadLength);
+    // reset the totalRead - reuse it!
+    totalRead = 0;
+    // read in the whole payload
+    while(totalRead < payloadLength){
+        int nRead = recv(sd, payload.data() + totalRead, payloadLength - totalRead, 0);
+        if (nRead == -1){
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+            return nullptr; 
+        } else if (nRead == 0) {
+            cerr << "Client closed the connection" << endl;
+            return nullptr;
+        }
+        // add the current bytes read to the total
+        totalRead += nRead;
+    }
 
-//     // create a new char* to hold the whole msg
-//     char* finalMsg = new char[message.length() + 1];
-//     // copy the msg into the char*
-//     strcpy(finalMsg, message.c_str());
-
-//     return finalMsg;
-// }
+    // create a new baseMsg
+    struct baseMsg msg(type, payload.data(), payload.size());
+    return msg;
+}
 
 // receive msg, non-blocking does not wait - tcp
 baseMsg* receiveNonblockingTcp(int sd){
