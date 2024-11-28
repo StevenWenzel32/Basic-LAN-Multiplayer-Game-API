@@ -186,7 +186,7 @@ void printGrid(){
 // read in the msgs and pass them off for processing
 void readMsg(){
     // read in the msg -- tic protocols related
-    struct baseMsg* msg = receiveBlockingTcp(this->playerSd);
+    struct baseMsg msg = receiveBlockingTcp(this->playerSd);
 
     // check if the msg type is a move
     if (msg->type == 1){
