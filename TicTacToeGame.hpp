@@ -13,18 +13,28 @@ bool over = 0;
 // _ = empty spot
 // X = host placed
 // O = client placed
-char grid[2][2];
+char grid[3][3];
 
 // input move 
 // checks if the move is from the host - host is always X, client is always O
-void processMove();
+void processMove(int x, int y, bool host);
+// go through and check for 3 in a row in the grid for the passed in mark
+void checkForWin(char mark);
+// checks if the passed in mark won -- also checks for a cats game
+void checkRows(char mark);
+// checks if the passed in mark won -- also checks for a cats game
+void checkColumns(char mark);
+// checks if the passed in mark won -- also checks for a cats game
+void checkDiagonalLeftRight(char mark);
+// checks if the passed in mark won -- also checks for a cats game
+void checkDiagonalRightLeft(char mark);
 // game win procedure 
-void gameWin();
+void gameWin(char mark);
 // print out the game grid
 void printGrid();
+// read in the msgs and pass them off for processing
+void readMsg();
 // start a game and the make the player who started it the host -- the game logic "main"
 void startGame();
-// end the game - to be called in gameWin() also called when players
-void endGame();
 
 #endif

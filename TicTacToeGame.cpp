@@ -183,13 +183,30 @@ void printGrid(){
     cout << endl;
 }
 
+// read in the msgs and pass them off for processing
+void readMsg(){
+    // read in the msg -- tic protoocols related **********
+
+    // check if the msg type is a move
+    if (type == 1){
+        // feed it into process move
+        processMove();
+    } else if (type == 2){
+        // feed it into procees state
+
+    } else {
+        cerr << "ERROR: Unknown game msg type" << endl;
+    }
+}
+
 // start a game and the make the player who started it the host -- the game logic "main"
 void startGame(){
     // give a game start msg
     cout << "The game has started" << endl;
     // intialize the grid to be filled with _
-    
-    // make an empty grid and show it to the player
+    fill(&grid[0][0], &grid[0][0] + sizeof(grid), '_');
+
+    // print out the empty grid
     printGrid();
 
     // loop through sending and retreiving moves and states -- while the game is still playing
@@ -198,7 +215,7 @@ void startGame(){
         if (this.host){
             // other players turn
             // check if there is a move to read in -- blocking
-            read
+            readMsg();
             // process their move
             // print out new grid
             printGrid();
