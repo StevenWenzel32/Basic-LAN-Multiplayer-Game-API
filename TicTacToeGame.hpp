@@ -43,6 +43,5 @@ void startGame();
 
 
 // finish readMsg() in game
-// modify recieveTcpBlocking() in basic networking
 // update tic potocols.hpp funcs
 // finish tic protoocls.cpp
