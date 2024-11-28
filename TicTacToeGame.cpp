@@ -185,31 +185,59 @@ void printGrid(){
 
 // read in the msgs and pass them off for processing
 void readMsg(){
-    // read in the msg -- tic protocols related **********
-    baseMsg* msg = receiveBlockingTcp();
-    // check if the msg type is a move
-    if (type == 1){
-        // feed it into process move
-        processMove();
-    } else if (type == 2){
-        // set your grid to the grid received *****************
+    // read in the msg -- tic protocols related
+    struct baseMsg* msg = receiveBlockingTcp(this->playerSd);
 
+    // check if the msg type is a move
+    if (msg->type == 1){
+        // put the payload into a sstream
+
+        // parse the payload
+        int x = ;
+        int y = ;
+        // feed it into process move
+        processMove(x, y, host);
+    } else if (msg->type == 2){
+        // put the payload into a sstream
+        // set your grid to the grid received *****************
+        char newGrid[3][3];
+        newGrid = msg->payload;
     } else {
         cerr << "ERROR: Unknown game msg type" << endl;
     }
 }
 
-// prompt the user for their move and feeds it into processMove()
+// prompt the user for their move, if host process it, if client send it
 void movePrompt(){
     // send msg to user
     cout << "Please enter your move as a coordinate point using a space (ex: 1 2): " << endl;
     cout << "Your move: ";
-    // check for user input *********
 
-    // parse the user input *********
+    // to store the user input
+    string input;
+    // check for user input
+    getline(cin, input);
+    // put the string into a sstream
+    istringStream stream(input);
+    // vector to store the tokens
+    vector<string> tokens;
+    // hold the current token
+    string token;
 
-    // process your move ************
-    processMove(x, y, host);
+    // parse the user input
+    while(stream >> token){
+        // put curretn token into the vector
+        tokens.push_back(token);
+    }
+
+    // if host process the move
+    if (host){
+        // process your move
+        processMove(tokens[0], tokens[1], host);
+    } else {
+        // send the move
+        sendMove(tokens[0], tokens[1]);
+    }
 }
 
 // start a game and the make the player who started it the host -- the game logic "main"
@@ -241,10 +269,5 @@ void startGame(){
             // send the new game state/grid to the client
             sendState(grid);
         } 
-        // if client
-        else {
-            // send your move to host
-            sendMove();
-        }
     }
 }
