@@ -5,7 +5,7 @@
 #define TICTACTOE_PROTOCOLS_HPP
 
 // my files
-#include "player.hpp"
+#include "basicNetworking.hpp"
 
 // send move - used by both client and host
 void sendMove(int x, int y);

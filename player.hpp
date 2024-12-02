@@ -43,8 +43,8 @@
 #include <cctype>        // For std::isdigit
 
 // my files
-// for the socket related functions and basic msg sends and recieves
-#include "basicNetworking.hpp"
+// the game related and specifc protocols - this file should include the basicNetworking
+#include "TicTacToeGame.hpp"
 
 // port to use to listen and send on broadcast
 #define PORT "2087"
