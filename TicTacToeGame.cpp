@@ -32,9 +32,9 @@ void processMove(int x, int y, bool host){
 void checkForWin(char mark){
     // check if the mark is valid
     if (mark == 'X' || mark == 'O'){
-        // loop through the rows 
+        // loop through the rows - does minor checks for cats game
         checkRows(mark);
-        // loop throught the columns
+        // loop throught the columns - does minor checks for cats game
         checkColumns(mark);
         // check the diagonals
         checkDiagonalLeftRight(mark);
@@ -202,14 +202,18 @@ void readMsg(){
         }
     } else if (msg->type == 2){
         // put the payload into a sstream
-        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end()));
+        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end() - sizeof(bool)));
         // set your grid to the grid received
         for (int i = 0; i < 3; i++){
             for (int j = 0; j < 3; j++){
                 payloadStream >> grid[i][j];
             }
         }
-        
+        // grab the bool state of the game
+        bool gameState;
+        payloadStream >> gameState;
+        // update the over state of the game
+        this->over = gameState;
     } else {
         cerr << "ERROR: Unknown game msg type" << endl;
     }

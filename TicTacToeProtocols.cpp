@@ -7,33 +7,23 @@
 // send move - used by the client
 void sendMove(int x, int y){
     // put the data into a char*
-    char payload[256];
-    snprintf(payload, sizeof(payload), "%d:%d:%d", x, y);
+    char payload[128];
+    snprintf(payload, sizeof(payload), "%d:%d", x, y);
     // make a new base msg
     // 1 = move
     struct baseMsg msg(1, payload, strlen(payload));
     basicNetworking::sendTcpMsg(this.playerSd, msg);
-}
-
-// read in a move sent by the other player
-void readMsg(int &x, int& y){
-    
 }
 
 // send game state - used by host 
-void sendState(vector<int> rows, bool win){
+void sendState(char* grid, bool over){
     // put the data into a char*
     char payload[256];
-    snprintf(payload, sizeof(payload), "%d:%d:%d", rows, win);
+    snprintf(payload, sizeof(payload), "%d:%d", grid, over);
     // make a new base msg
-    // 1 = move
-    struct baseMsg msg(1, payload, strlen(payload));
+    // 2 = state
+    struct baseMsg msg(2, payload, strlen(payload));
     basicNetworking::sendTcpMsg(this.playerSd, msg);
-}
-
-// read in the state sent by the host
-void readState(){
-
 }
 
 // send game win msg - to be sent on the local
@@ -44,5 +34,10 @@ void sendWinMsg(){
 // send game lose msg - to be sent on the local
 void sendLoseMsg(){
     cout << "Whelp you lost" << endl;
+}
+
+// send game lose msg - to be sent on the local
+void sendCatsMsg(){
+    cout << "No one wins" << endl;
 }
 

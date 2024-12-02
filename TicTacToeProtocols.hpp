@@ -8,17 +8,15 @@
 #include "player.hpp"
 
 // send move - used by both client and host
-void sendMove(int x, int y, bool host);
-// read in a move sent by the other player
-void readMove();
+void sendMove(int x, int y);
 // send game state - used by host 
-void sendState(vector<int> rows, bool win);
-// read in the state sent by the host
-void readState();
+void sendState(char* grid, bool over);
 // send game win msg - to be sent on the local
 void sendWinMsg();
 // send game lose msg - to be sent on the local
 void sendLoseMsg();
+// send cats game msg - to be sent on the local
+void sendCatsMsg();
 
 
 #endif

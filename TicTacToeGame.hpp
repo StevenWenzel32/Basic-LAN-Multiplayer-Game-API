@@ -7,7 +7,7 @@
 #include "TicTacToeProtocols.hpp"
 
 // if the game is over or not
-bool over = 0;
+bool over = false;
 
 // the grid of the game - 3x3
 // _ = empty spot
@@ -24,9 +24,9 @@ void checkForWin(char mark);
 void checkRows(char mark);
 // checks if the passed in mark won -- also checks for a cats game
 void checkColumns(char mark);
-// checks if the passed in mark won -- also checks for a cats game
+// checks if the passed in mark won
 void checkDiagonalLeftRight(char mark);
-// checks if the passed in mark won -- also checks for a cats game
+// checks if the passed in mark won
 void checkDiagonalRightLeft(char mark);
 // game win procedure 
 void gameWin(char mark);
@@ -40,7 +40,3 @@ void movePrompt();
 void startGame();
 
 #endif
-
-
-// update tic potocols.hpp funcs
-// finish tic protoocls.cpp
