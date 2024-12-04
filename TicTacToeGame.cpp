@@ -339,20 +339,27 @@ void TicTacToe::sendCatsMsg(){
 
 // start a game and the make the player who started it the host -- the game logic "main"
 void TicTacToe::startGame(){
-    // give a game start msg
-    cout << "The game has started" << endl;
+    if (this->host){
+        // give a game start msg
+        cout << "The game has started" << endl;
+    } else {
+        cout << "You have joined the game! The host goes first" << endl;
+    }
+    
     // intialize the grid to be filled with _
     fill(&this->grid[0][0], &this->grid[0][0] + sizeof(this->grid), '_');
 
-    // print out the empty grid
-    printGrid();
+    if (this->host){
+        // print out the empty grid
+        printGrid();
+    }
 
     // loop through sending and retreiving moves and states -- while the game is still playing
     while (!this->over){
         // check if you aren't the host
         if (!this->host){
             // other players turn
-            // check if there is a move to read in -- blocking
+            // check if there is a msg to read in -- blocking
             readMsg();
             // print out new grid
             printGrid();
