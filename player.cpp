@@ -9,7 +9,8 @@
 #include "player.hpp"
 
 // port to use to listen and send on broadcast
-#define PORT "2087"
+#define UDP_PORT "2087"
+#define TCP_PORT "2088"
 
 // flag to exit loops when shutting down
 volatile sig_atomic_t shutdown_flag = 0;
@@ -106,20 +107,28 @@ void Player::createGameOut(){
     this->currentGame = gameId;
     // mark yourself as host 
     this->game.host = true;
+cout << "ip being given for the game host = " << this->ip << endl;
     // broadcast the creation of the game - udp 
     createGameMsg(gameId, this->ip);
-    // start up the game - this is in the tictactoe protocols file *************
+    // start up the game - this is in the tictactoe protocols file
     this->game.startGame();
 }
 
 // handling the recieving of a notification that a new game was created -- need mutexs
 void Player::createGameIn(int gameId, string hostIp){
+    // Validate the IP address
+    struct sockaddr_in sa;
+    if (inet_pton(AF_INET, hostIp.c_str(), &(sa.sin_addr)) != 1) {
+        cerr << "Error: Invalid IP address received: " << hostIp << endl;
+        return; // Ignore the invalid game creation request
+    }
     // up your local gameCounter
     gameCounter++;
     // create a new game object 
     struct game newGame;
     // reset the game counter to fit your local map 
     newGame.id = gameCounter;
+cout << "creating a new game this is the HostIP = " << hostIp << endl;
     // fill in host
     newGame.hostIp = hostIp;
     // lock the mutex before accessing the shared memory 
@@ -131,8 +140,6 @@ void Player::createGameIn(int gameId, string hostIp){
 // notify the host of the game that you are joining, broadcast the game is full
 void Player::joinGameOut(int gameId){
     try {
-        // send join msg to host - tcp
-        joinGameMsg(this->ip);
         // lock the mutex before accessing the shared memory 
         lock_guard<mutex> lock(gamesMutex);
         // check if the gameId exsits
@@ -141,22 +148,31 @@ void Player::joinGameOut(int gameId){
             cout << "The game you want to join doesn't exist" << endl;
             return;
         }
+cout << "about to call connectToHost" << endl;
+cout << "hostIP = " << avaliableGames.at(gameId).hostIp << endl;
         // connect to host and update the playerSd
         this->playerSd = connectToHost("tcp", avaliableGames.at(gameId).hostIp);
+cout << "connected to host" << endl;
         // update the game playerSd too 
         this->game.playerSd = this->playerSd;
         // update the currentGame
         this->currentGame = gameId;
+cout << "about to send joingGameMsg" << endl;
+        // send join msg to host - tcp
+        joinGameMsg(this->ip);
+cout << "past joingGameMsg" << endl;
         // update your game list by removing the game you joined
         avaliableGames.erase(gameId);
         // broadcast that the game is full and should be removed from the list of games
         gameFullMsg(gameId);
+cout << "game full msg sent" << endl;
+        // start the game that you joined - this is in the tictactoe protocols file
+        this->game.startGame();
     } catch (const out_of_range& e){
         cerr << "ERROR: Game ID is out of range" << endl;
     } catch (const exception& e){
         cerr << "ERROR: an exception occured while trying to join the game" << endl;
     }
-    
 }
 
 // handling the recieving of a notification that a game is full -- need mutexs
@@ -232,15 +248,17 @@ void Player::unregisterIn(string playerIp){
 // works with tcp and udp, returns the SD
 int Player::connectToHost(string type, string hostIp){
     // make the addrinfo
-    struct addrinfo* servinfo = makeAddrinfo(type, hostIp, PORT);
+    struct addrinfo* hostinfo = makeAddrinfo(type, hostIp, UDP_PORT);
+    // update the playerInfo
+    this->playerinfo = hostinfo;
     // make the socket
-    return makeSocket(servinfo);
+    return makeSocket(hostinfo);
 }
 
 // accepts the connection to the client player - host side
 // returns the new SD
 int Player::acceptClientPlayer(){
-    return acceptConnection(this->playerSd);
+    return acceptConnection(this->tcpListenSd);
 }
 
 // closes the connection socket or the listening socket
@@ -267,20 +285,25 @@ void Player::setIpAsLocal(){
     memset(&hints, 0, sizeof(hints));
     // ipv4 for simplicity 
     hints.ai_family = AF_INET; 
-    // tcp because ???
-    hints.ai_socktype = SOCK_STREAM; 
 
     // resolve the host name to an IP address
     if (getaddrinfo(hostname, nullptr, &hints, &res) != 0){
         cerr << "get addrinfo failed" << endl;
+        return;
     }
 
     // convert the IP into a string
     char ipStr[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr));
+    if (inet_ntop(AF_INET, &((struct sockaddr_in*)res->ai_addr)->sin_addr, ipStr, sizeof(ipStr)) == nullptr){
+        cerr << "inet_ntop failed" << endl;
+        freeaddrinfo(res);
+        return;
+    }
+    // set the ip
+cout << "this is the players ip = " << string(ipStr) << endl;
+    this->ip = string(ipStr);
 
     freeaddrinfo(res);
-    this->ip = ipStr;
 }
 
 
@@ -339,7 +362,7 @@ void Player::exitGameMsg(){
 void Player::createGameMsg(int gameId, string hostIp){
     // put the passed in values into an acceptable payload
     char payload[256];
-    snprintf(payload, sizeof(payload), "%d:%s", gameId, hostIp);
+    snprintf(payload, sizeof(payload), "%d:%s", gameId, hostIp.c_str());
     // create the baseMsg
     // 4 = "createGame"
     struct baseMsg msg('4', payload, strlen(payload));
@@ -372,6 +395,7 @@ void Player::joinGameMsg(string ip){
     // create the baseMsg
     // 6 = "joinGame"
     struct baseMsg msg('6', payload, strlen(payload));
+cout << "about to send the upd msg" << endl;
     // send the baseMsg
     sendUdpMsg(this->playerSd, msg, this->playerinfo);
 }
@@ -410,11 +434,19 @@ cout << "inside processMsgs" << endl;
     } 
     // create game
     else if (msg->type == '4'){
+        // check the payload size
+
         // break up the payload by length
         int gameId;
-        string hostIp(msg->payload.begin() + sizeof(int), msg->payload.end());
-        // fill in the host ip
+        // fill in the gameId
         memcpy(&gameId, msg->payload.data(), sizeof(int));
+        string payload(msg->payload.begin(), msg->payload.end());
+cout << "whole payload = " << payload << endl;
+        // find the delimiter :
+        size_t delim = payload.find(':');
+        // fill in the host ip
+        string hostIp = payload.substr(delim + 1);
+cout << "the hostIp that has been recovered = " << hostIp << endl;
         // send the payload
         createGameIn(gameId, hostIp);
     } 
@@ -437,7 +469,7 @@ cout << "inside processMsgs" << endl;
 void Player::listenForMsgs(){
     while (!shutdown_flag){
 cout << "calling recieve non block udp" << endl;
-        // read in a msg here 
+        // read in a UDP broadcast msg here 
         baseMsg* msg = receiveNonblockingUdp(this->broadSd, this->broadcastAddr);
         // make sure there is a msg 
         if (msg != nullptr){
@@ -447,6 +479,15 @@ cout << "made a new thread to process a msg that was recieved" << endl;
 cout << "thread has been made and maybe finished running?" << endl;
             // put thread in vector
             threads.push_back(new_thread);
+        }
+
+        // check for connections
+        int clientSd = acceptClientPlayer();
+        // check if a connection was made
+        if (clientSd != -1){
+            // change the saved sd
+            // the TCP msgs are read and handled in the startGame()
+            this->playerSd = clientSd;
         }
     }
 }
