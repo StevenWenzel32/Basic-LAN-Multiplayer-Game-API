@@ -144,11 +144,12 @@ class Player {
     pthread_t makeThread(baseMsg* msg);
     // set the players ip to the local users ip 
     void setIpAsLocal();
+    void printHelp();
 
     // process the messages being sent over broadcast
     void* processMsgs(void* data);
     // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
-    sendMsgs(this->broadSd, clientinfo);
+    void sendMsgs(int broadSd, struct addrinfo* clientinfo)
     // listen for msgs on the broadcast
     void listenForMsgs();
 
@@ -169,8 +170,6 @@ class Player {
     void gameFullMsg(int gameId);
     // tell the host you have joined their game, send your ip and the gameId
     void joinGameMsg(string ip);
-    // listen for msgs on the broadcast
-    void listenForMsgs();
 
 //    protected:
     // vars related to the players device

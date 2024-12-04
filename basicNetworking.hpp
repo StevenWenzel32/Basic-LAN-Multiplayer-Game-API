@@ -57,9 +57,9 @@ struct baseMsg {
 
 // making addrinfo
 // make a addrinfo for listening using - server side
-struct addrinfo* makeAddrinfo(string type, int port);
+struct addrinfo* makeAddrinfo(string type, string port);
 // make a addrinfo for socket structs - client side
-struct addrinfo* makeAddrinfo(string type, const char* serverIp, int port)
+struct addrinfo* makeAddrinfo(string type, string serverIp, string port);
 
 // make a socket for any purpose as set in the makeAddrinfo funcs
 int makeSocket(struct addrinfo* servinfo);
@@ -91,8 +91,10 @@ void closeSocket(int sd);
 // msg sending
 // helper function to searliaze the baseMsg into a vector<char> so the send will work right
 vector<char> serializeBaseMsg(const baseMsg& msg);
-// send a UDP msg as baseMsg
+// send a UDP msg as baseMsg - takes in an addrinfo
 void sendUdpMsg(int sd, const baseMsg& message, struct addrinfo *destinfo);
+// send a UDP msg as baseMsg - takes in the structaddr_in
+void sendUdpMsg(int sd, const baseMsg& message, struct sockaddr_in addr);
 // send a TCP msg as baseMsg
 void sendTcpMsg(int sd, const baseMsg& message);
 
@@ -104,11 +106,13 @@ void sendTcpMsg(int sd, const baseMsg& message);
 // receive a UDP msg, returns the msg as char[] -- does not wait for a response/non blocking
 //char* receiveUdp(int clientSd, struct addrinfo* servinfo);
 // actually used ***
-// recieve a UDP msg, non blocking, returns msg as baseMsg*
-baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* servinfo);
+// recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in adrrinfo
+baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* addrinfo);
+// recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in structaddr_in
+baseMsg* receiveNonblockingUdp(int clientSd, struct sockaddr_in addrinfo);
 
 // receive msg, blocking/stop and wait, returns msg as char* - tcp
-baseMsg* receiveBlockingTcp(int sd);
+baseMsg receiveBlockingTcp(int sd);
 
 // this is being used
 // this is a great example of how the other receives should be made later on ***
