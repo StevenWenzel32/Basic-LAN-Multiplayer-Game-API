@@ -19,23 +19,25 @@ void TicTacToe::processMove(int x, int y){
     // check if the host
     if (this->host){
         // if the spot given is a _ fill it with a X
-        if (grid[x][y] == '_'){
-            grid[x][y] = 'X';
+        if (grid[y][x] == '_'){
+            grid[y][x] = 'X';
             // check if this move lets them win
             checkForWin('X');
             return;
+        } else {
+            cout << "that is not a valid move" << endl;
         }  
     } else {
         // if the spot given is a _ fill it with a O
-        if (grid[x][y] == '_'){
-            grid[x][y] = 'X';
+        if (grid[y][x] == '_'){
+            grid[y][x] = 'O';
             // check if this move lets them win
             checkForWin('O');
             return;
+        } else {
+            cout << "that is not a valid move" << endl;
         }
     }
-    // if you get here then the move is invalid
-    cout << "Move is not valid" << endl;
 }
 
 // go through and check for 3 in a row in the grid for the passed in mark
@@ -138,7 +140,7 @@ void TicTacToe::checkDiagonalRightLeft(char mark){
     // counter for the mark
     int markCount = 0;
     // move down the columns
-    for (int j = 3; j > 0; j--){
+    for (int j = 2; j > 0; j--){
         // move up the rows
         for (int i = 0; i < 3; i++){
             // up the counts for the row
@@ -178,15 +180,17 @@ void TicTacToe::printGrid(){
             // print out the current location
             // if in middle column
             if (j == 1){
-                cout << "| " << grid[i][j] << " |" << endl;
+                cout << "| " << grid[i][j] << " |";
+            } else if (j == 2){
+                cout << " " << grid[i][j] << " ";
+                cout << endl;
+                // if not the last row
+                if (i != 2){
+                    cout << "-----------" << endl;
+                }
             } else {
-                cout << " " << grid[i][j] << " " << endl;
-            }
-            
-            // if not the last row
-            if (i != 2){
-                cout << "-----------" << endl;
-            }
+                cout << " " << grid[i][j] << " ";
+            } 
         }
     }
     // print empty line at end
@@ -195,6 +199,15 @@ void TicTacToe::printGrid(){
 
 // read in the msgs and pass them off for processing
 void TicTacToe::readMsg(){
+    // check if the playerSd is empty
+    if (this->playerSd == 0){
+        // no player has joined yet
+        cout << "no player has joined your game yet, please wait..." << endl;
+        // loop until they join
+        while (this->playerSd == 0){
+
+        }
+    }
     // read in the msg -- tic protocols related
     struct baseMsg msg = receiveBlockingTcp(this->playerSd);
 
@@ -252,8 +265,12 @@ void TicTacToe::movePrompt(){
         tokens.push_back(token);
     }
 
+    // check for exit command
+    if (tokens[0] == "exit"){
+        this->over = true;
+    }
     // if host process the move
-    if (this->host){
+    else if (this->host){
         // process your move
         processMove(stoi(tokens[0]), stoi(tokens[1]));
     } else {
@@ -264,17 +281,38 @@ void TicTacToe::movePrompt(){
 
 // send move - used by the client
 void TicTacToe::sendMove(int x, int y){
+cout << "entered send move" << endl;
+    // check if the playerSd is empty
+    if (this->playerSd == 0){
+        // no player has joined yet
+        cout << "Your move will be sent once a player joins your game, please wait..." << endl;
+        // loop until they join
+        while (this->playerSd == 0){
+
+        }
+    }
     // put the data into a char*
     char payload[128];
     snprintf(payload, sizeof(payload), "%d:%d", x, y);
     // make a new base msg
     // 1 = move
     struct baseMsg msg(1, payload, strlen(payload));
+cout << "about to call sendTCpMsg" << endl;
     sendTcpMsg(this->playerSd, msg);
 }
 
 // send game state - used by host 
 void TicTacToe::sendState(char grid[3][3], bool over){
+    cout << "entered send state" << endl;
+    // check if the playerSd is empty
+    if (this->playerSd == 0){
+        // no player has joined yet
+        cout << "Your move will be sent once a player joins your game, please wait..." << endl;
+        // loop until they join
+        while (this->playerSd == 0){
+
+        }
+    }
     // put the data into a char*
     char payload[256];
     snprintf(payload, sizeof(payload), "%d:%d", grid, over);
@@ -310,12 +348,15 @@ void TicTacToe::startGame(){
     printGrid();
 
     // loop through sending and retreiving moves and states -- while the game is still playing
-    while (this->over == 0){
-        // other players turn
-        // check if there is a move to read in -- blocking
-        readMsg();
-        // print out new grid
-        printGrid();
+    while (!this->over){
+        // check if you aren't the host
+        if (!this->host){
+            // other players turn
+            // check if there is a move to read in -- blocking
+            readMsg();
+            // print out new grid
+            printGrid();
+        }
 
         // your turn 
         // prompt the user for their move
