@@ -75,10 +75,10 @@ void setSocketBroadcast(int sd);
 // bind the socket to the port
 void bindSocket(int serverSd, struct addrinfo* servinfo);
 
-// listen on the socket for up to backlog # of connections
+// listen on the socket for up to backlog # of connections - only needed for TCP
 void listening(int serverSd, int backlog);
 
-// Accept the connection as a new socket -- server side
+// Accept the connection as a new socket -- server side - only needed for TCP
 // is non-blocking
 int acceptConnection(int serverSd);
 

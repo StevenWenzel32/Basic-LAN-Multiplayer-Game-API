@@ -200,7 +200,7 @@ void sendUdpMsg(int sd, const baseMsg& msg, struct addrinfo *servinfo){
 
     int bytes_sent = sendto(sd, converted.data(), converted.size(), 0, servinfo->ai_addr, servinfo->ai_addrlen);
     if (bytes_sent == -1){
-        cerr << "Problem with UDP send" << endl;
+        cerr << "Problem with UDP addrinfo send" << endl;
     }
 }
 
@@ -211,12 +211,17 @@ void sendUdpMsg(int sd, const baseMsg& msg, struct sockaddr_in addrinfo){
 
     int bytes_sent = sendto(sd, converted.data(), converted.size(), 0, reinterpret_cast<struct sockaddr*>(&addrinfo), sizeof(addrinfo));
     if (bytes_sent == -1){
-        cerr << "Problem with UDP send" << endl;
+        cerr << "Problem with UDP sockaddr_in send" << endl;
     }
 }
 
 // send a TCP msg as baseMsg
 void sendTcpMsg(int sd, const baseMsg& msg){
+    // check if the sd is empty 
+    if (sd == 0){
+        cerr << "the sd is empty - there is no one to send the msg too" << endl;
+        return;
+    }
     // convert the baseMsg into a vecctor<char>
     vector<char> converted = serializeBaseMsg(msg);
 
@@ -282,9 +287,9 @@ void sendTcpMsg(int sd, const baseMsg& msg){
 
 // recieve a UDP msg, non blocking, returns msg as baseMsg*
 baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
-    int messageBuf[BUFFER_SIZE] = {0};
+    char messageBuf[BUFFER_SIZE] = {0};
     // recieve the message into the msg[] array and make sure it was read correctly
-    int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
+    int nRead = recvfrom(sd, messageBuf, BUFFER_SIZE, 0, servinfo->ai_addr, &(servinfo->ai_addrlen));
     // error checks
     if (nRead == -1){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -321,23 +326,22 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
         return nullptr;
     }
 
-    // grab the payload of the msg
-    vector<char> packetPayload(messageBuf + sizeof(unsigned int) + sizeof(unsigned char), 
-        messageBuf + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
+    // start after the header
+    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(unsigned char);
 
     // create a baseMsg to return
-    baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
+    baseMsg* msg = new baseMsg(packetType, payloadStart, packetLength);
 
     return msg;
 }
 
 // recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in a struct sockadrr_in
 baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
-    int messageBuf[BUFFER_SIZE] = {0};
+    char messageBuf[BUFFER_SIZE] = {0};
     // put the size of the addrinfo into right var
     socklen_t addrLen = sizeof(addrinfo);
     // recieve the message into the msg[] array and make sure it was read correctly
-    int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&addrinfo), &addrLen);
+    int nRead = recvfrom(sd, messageBuf, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&addrinfo), &addrLen);
     // error checks
     if (nRead == -1){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -352,7 +356,7 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
         return nullptr;
     }
     
-    // check if the length of the packet has come through
+    // check if the header has come through
     if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
         // not enough data for the packet header
         return nullptr;
@@ -374,12 +378,11 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
         return nullptr;
     }
 
-    // grab the payload of the msg
-    vector<char> packetPayload(messageBuf + sizeof(unsigned int) + sizeof(unsigned char), 
-        messageBuf + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
+    // start after the header
+    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(unsigned char);
 
     // create a baseMsg to return
-    baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
+    baseMsg* msg = new baseMsg(packetType, payloadStart, packetLength);
 
     return msg;
 }
