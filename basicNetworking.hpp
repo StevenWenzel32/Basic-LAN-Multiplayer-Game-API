@@ -23,6 +23,13 @@
 #include <arpa/inet.h>    // conversion from little endian and big endian
 #include <vector>         // vector bu dur
 
+#include <iostream>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
 // hard coded values
 // # of connection requests for the server to listen to at a time
 // based losely off of the class size
@@ -87,6 +94,9 @@ void connectSocket(int clientSd, struct addrinfo* servinfo);
 
 // ends the connection
 void closeSocket(int sd);
+
+// get the local broadcast address
+string getBoradcastAddr();
 
 // msg sending
 // helper function to searliaze the baseMsg into a vector<char> so the send will work right

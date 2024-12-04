@@ -34,8 +34,15 @@ int main (int argc, char* argv[]) {
     player.broadcastAddr.sin_family = AF_INET;
     // convert the port to network byte order
     player.broadcastAddr.sin_port = htons(atoi(UDP_PORT));
-    // set the boradcast addr
-    player.broadcastAddr.sin_addr.s_addr = inet_addr("255.255.255.255");
+    // set the boradcast addr - old
+//    player.broadcastAddr.sin_addr.s_addr = inet_addr("255.255.255.255");
+    // new
+    string broadcastAddr = getBoradcastAddr();
+    if (!broadcastAddr.empty()){
+        player.broadcastAddr.sin_addr.s_addr = inet_addr(broadcastAddr.c_str());
+    } else {
+        cerr << "unable to determine the boradcast address" << endl;
+    }
 
     // setup the TCP listening socket for connecting to other players
     // get the info 

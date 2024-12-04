@@ -81,7 +81,7 @@ class Player {
     // kill the connection to the server
 //    void disconnectFromServer();
 
-    // out functions
+    // out functions - change these to send msgs to the server **************
     // broadcast on LAN avaliable to play, carries contact info
     // maybe add a player username
     void registerPlayerOut();
@@ -94,7 +94,7 @@ class Player {
     // remove yourslef from your player list and broadcast to others to remove you
     void unregisterOut();
 
-    // in functions / msg processing
+    // in functions / msg processing - repalce these with functions process the update msgs received from the server *****************
     // puts the player into the player list
     void registerPlayerIn(string ip);
     // handling the recieving of a notification that a new game was created
@@ -128,14 +128,14 @@ class Player {
     // print out the rules of the game - tic tac toe
     void printRules();
 
-    // process the messages being sent over broadcast
+    // process the messages being sent over broadcast - change to process msgs from the server *********
     void processMsgs(baseMsg* msg);
-    // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
+    // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols - change *************
     void sendMsgs(int broadSd, struct addrinfo* clientinfo);
-    // listen for msgs on the broadcast
+    // listen for msgs on the broadcast and tcp listneing socket
     void listenForMsgs();
 
-    // msg creation and sending funcs
+    // msg creation and sending funcs - change these to send msgs to the server **********************
     // the port might be unneeded
     // send a broadcast msg to register the player into other players list
     // sending your own ip

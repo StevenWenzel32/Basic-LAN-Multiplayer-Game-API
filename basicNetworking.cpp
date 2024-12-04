@@ -174,6 +174,51 @@ void connectSocket(int clientSd, struct addrinfo* servinfo){
     freeaddrinfo(servinfo);
 }
 
+// get the local broadcast address
+string getBoradcastAddr(){
+    struct ifreq ifr;
+    struct sockaddr_in* addr;
+
+    // open a socket for the ioctl operation
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == -1){
+        perror("socket error");
+        return "";
+    }
+
+    // get the ip address of the interface
+    if (ioctl(sock, SIOCGIFADDR, &ifr) == -1){
+        perror("IOCTL error getting ip address");
+        close(sock);
+        return "";
+    }
+    addr = (struct sockaddr_in*)&ifr.ifr_addr;
+    string ipAddress = inet_nota(addr->sin_addr);
+
+    // get the subnet mask of the interface
+    if (ioctl(sock, SIOCGIFNETMASK, &ifr) == -1){
+        perror("IOCTL error getting subnet mask");
+        close(sock);
+        return "";
+    }
+    addr = (struct sockaddr_in*)&ifr.ifr_netmask;
+    string netmask = inet_ntoa(addr->sin_addr);
+
+    // clsoe the sokcet
+    close(sock);
+
+    // convert the ip and subnet mask to numeric form
+    struct in_addr ip, mask;
+    inet_pton(AF_INET, ipAddress.c_str(), &ip);
+    inet_pton(AF_INET, netmask.c_str(), &mask);
+
+    // calualte the boradcast address (ip | ~mask)
+    struct in_addr broadcast;
+    broadcast.s_addr = ip.s_addr | (~mask.s_addr);
+
+    return inet_nota(broadcast);
+}
+
 // types of sending and recieving below here -- alow with some helpers
 
 vector<char> serializeBaseMsg(const baseMsg& msg){

@@ -1,4 +1,6 @@
-// This is basically the lobby -- handles the server side of making the player connections
+// This is basically the lobby -- helps the players connect to each other
+// the players register, create games, join games, exit games, and unregister here
+// the server has direct TCP connections with the players to send them updates - cause using broadcasts is confusing
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -30,6 +32,49 @@
 // for the socket related functions and basic msg sends and recieves
 #include "basicNetworking.hpp"
 
+// structs 
+// game struct to be put into local list of games to join
+struct game{
+    // for quick id
+    int id = 0;
+    // the knight/host/player1
+    string hostIp;
+};
+
+// player struct to be put into local list of registered players 
+struct player{
+    // for quick id
+    int id = 0;
+    // how to contact them
+    string ip;
+    // the socket used to send msgs to them
+    int sd;
+};
+
+// holds threads to make sure they are cleaned up nice later
+vector<thread*> threads; 
+// mutex to protect the players map
+mutex playersMutex;
+// mutex to protect the game map
+mutex gamesMutex;
+// list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
+unordered_map<int, player> players;
+// used to create player ids
+int playerCounter = 1;
+
+// list of games that can be joined
+// maps the gameId to the game
+unordered_map<int, struct game> avaliableGames;
+// counter to create game ids
+int gameCounter = 1;
+
+
+// update msgs
+// send out the new game list
+// send out the new player list - don't think this is needed yet
+
+
+// functions to process the msgs sent from players
 
 
 #endif
