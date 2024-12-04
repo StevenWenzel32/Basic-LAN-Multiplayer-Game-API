@@ -3,11 +3,21 @@
 // my files
 #include "TicTacToeGame.hpp"
 
+// custom constructor - does nothing for now
+TicTacToe::TicTacToe() {
+
+}
+
+// custom destructor - does nothing for now
+TicTacToe::~TicTacToe() {
+
+}
+
 // input move 
 // checks if the move is from the host - host is always X, client is always O
-void processMove(int x, int y, bool host){
+void TicTacToe::processMove(int x, int y){
     // check if the host
-    if (host){
+    if (this->host){
         // if the spot given is a _ fill it with a X
         if (grid[x][y] == '_'){
             grid[x][y] = 'X';
@@ -29,7 +39,7 @@ void processMove(int x, int y, bool host){
 }
 
 // go through and check for 3 in a row in the grid for the passed in mark
-void checkForWin(char mark){
+void TicTacToe::checkForWin(char mark){
     // check if the mark is valid
     if (mark == 'X' || mark == 'O'){
         // loop through the rows - does minor checks for cats game
@@ -43,7 +53,7 @@ void checkForWin(char mark){
 }
 
 // checks if the passed in mark won -- also checks for a cats game
-void checkRows(char mark){
+void TicTacToe::checkRows(char mark){
     // counter for the spaces left
     int spacesLeft = 0;
 
@@ -68,14 +78,14 @@ void checkRows(char mark){
         }
     }
     // check if there are any spaces left
-    if (spaceLeft == 0){
+    if (spacesLeft == 0){
         // call it a cats game
         gameWin('_');
     }
 }
 
 // checks if the passed in mark won -- also checks for a cats game
-void checkColumns(char mark){
+void TicTacToe::checkColumns(char mark){
     // counter for the spaces left
     int spacesLeft = 0;
 
@@ -106,7 +116,7 @@ void checkColumns(char mark){
 }
 
 // checks if the passed in mark won -- also checks for a cats game
-void checkDiagonalLeftRight(char mark){
+void TicTacToe::checkDiagonalLeftRight(char mark){
     // counter for the mark
     int markCount = 0;
 
@@ -124,7 +134,7 @@ void checkDiagonalLeftRight(char mark){
 }
 
 // checks if the passed in mark won -- also checks for a cats game
-void checkDiagonalRightLeft(char mark){
+void TicTacToe::checkDiagonalRightLeft(char mark){
     // counter for the mark
     int markCount = 0;
     // move down the columns
@@ -144,11 +154,11 @@ void checkDiagonalRightLeft(char mark){
 }
 
 // game win procedure, pass in who won a
-void gameWin(char mark){
+void TicTacToe::gameWin(char mark){
     // mark the game as over
     over = true;
-    // if host won and you are host
-    if (mark == 'X' && host){
+    // if host won
+    if (mark == 'X' && this->host){
         sendWinMsg();
     } else if (mark == '_'){
         sendCatsMsg();
@@ -158,7 +168,7 @@ void gameWin(char mark){
 }
 
 // print out the game grid
-void printGrid(){
+void TicTacToe::printGrid(){
     // print empty line before start
     cout << endl;
     // loop through the rows
@@ -184,25 +194,25 @@ void printGrid(){
 }
 
 // read in the msgs and pass them off for processing
-void readMsg(){
+void TicTacToe::readMsg(){
     // read in the msg -- tic protocols related
     struct baseMsg msg = receiveBlockingTcp(this->playerSd);
 
     // check if the msg type is a move
-    if (msg->type == 1){
+    if (msg.type == 1){
         // put the payload into a sstream
-        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end()));
+        istringstream payloadStream(string(msg.payload.begin(), msg.payload.end()));
         // parse the payload
         int x, y;
         if (payloadStream >> x >> y){
             // feed it into process move
-            processMove(x, y, host);
+            processMove(x, y);
         } else {
             cerr << "ERROR: bad move given" << endl;
         }
-    } else if (msg->type == 2){
+    } else if (msg.type == 2){
         // put the payload into a sstream
-        istringstream payloadStream(string(msg->payload.begin(), msg->payload.end() - sizeof(bool)));
+        istringstream payloadStream(string(msg.payload.begin(), msg.payload.end() - sizeof(bool)));
         // set your grid to the grid received
         for (int i = 0; i < 3; i++){
             for (int j = 0; j < 3; j++){
@@ -220,7 +230,7 @@ void readMsg(){
 }
 
 // prompt the user for their move, if host process it, if client send it
-void movePrompt(){
+void TicTacToe::movePrompt(){
     // send msg to user
     cout << "Please enter your move as a coordinate point using a space (ex: 1 2): " << endl;
     cout << "Your move: ";
@@ -230,7 +240,7 @@ void movePrompt(){
     // check for user input
     getline(cin, input);
     // put the string into a sstream
-    istringStream stream(input);
+    istringstream stream(input);
     // vector to store the tokens
     vector<string> tokens;
     // hold the current token
@@ -243,27 +253,64 @@ void movePrompt(){
     }
 
     // if host process the move
-    if (host){
+    if (this->host){
         // process your move
-        processMove(tokens[0], tokens[1], host);
+        processMove(stoi(tokens[0]), stoi(tokens[1]));
     } else {
         // send the move
-        sendMove(tokens[0], tokens[1]);
+        sendMove(stoi(tokens[0]), stoi(tokens[1]));
     }
 }
 
+// send move - used by the client
+void TicTacToe::sendMove(int x, int y){
+    // put the data into a char*
+    char payload[128];
+    snprintf(payload, sizeof(payload), "%d:%d", x, y);
+    // make a new base msg
+    // 1 = move
+    struct baseMsg msg(1, payload, strlen(payload));
+    sendTcpMsg(this->playerSd, msg);
+}
+
+// send game state - used by host 
+void TicTacToe::sendState(char grid[3][3], bool over){
+    // put the data into a char*
+    char payload[256];
+    snprintf(payload, sizeof(payload), "%d:%d", grid, over);
+    // make a new base msg
+    // 2 = state
+    struct baseMsg msg(2, payload, strlen(payload));
+    sendTcpMsg(this->playerSd, msg);
+}
+
+// send game win msg - to be sent on the local
+void TicTacToe::sendWinMsg(){
+    cout << "Congrats you won the match!" << endl;
+}
+
+// send game lose msg - to be sent on the local
+void TicTacToe::sendLoseMsg(){
+    cout << "Whelp you lost" << endl;
+}
+
+// send game lose msg - to be sent on the local
+void TicTacToe::sendCatsMsg(){
+    cout << "No one wins" << endl;
+}
+
 // start a game and the make the player who started it the host -- the game logic "main"
-void startGame(){
+void TicTacToe::startGame(){
     // give a game start msg
     cout << "The game has started" << endl;
     // intialize the grid to be filled with _
-    fill(&grid[0][0], &grid[0][0] + sizeof(grid), '_');
+    fill(&this->grid[0][0], &this->grid[0][0] + sizeof(this->grid), '_');
 
     // print out the empty grid
     printGrid();
 
     // loop through sending and retreiving moves and states -- while the game is still playing
-    while (win == 0){
+    while (this->over == 0){
         // other players turn
         // check if there is a move to read in -- blocking
         readMsg();
@@ -277,9 +324,9 @@ void startGame(){
         printGrid();
 
         // check if host
-        if (this.host){
+        if (this->host){
             // send the new game state/grid to the client
-            sendState(grid);
+            sendState(this->grid, this->over);
         } 
     }
 }
