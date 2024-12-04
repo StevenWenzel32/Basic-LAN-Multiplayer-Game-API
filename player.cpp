@@ -22,21 +22,35 @@ void signalHandler(int signum){
 
 // custom constructor - does nothing for now
 Player::Player() {
-    // Constructor definition
+    
 }
 
 // custom destructor - does nothing for now
 Player::~Player() {
-    // Destructor definition
+    for (auto& t : threads) {
+        if (t->joinable()) {
+            t->join();
+        }
+        delete t;
+    }
 }
 
 // announces that you are avaliable to play, carries contact info
 // maybe add a player username
 void Player::registerPlayerOut(){
-    // set your ipAddr
-    setIpAsLocal();
-    // send your ip addr and port on the broadcast msg to the LAN - udp
-    registerMsg(this->ip);
+    try {
+        // set your ipAddr
+        setIpAsLocal();
+        if (this->ip.empty()){
+            cerr << "ERROR: IP address failed to be set correctly" << endl;
+        }
+        cout << "ip has been set" << endl;
+        // send your ip addr and port on the broadcast msg to the LAN - udp
+        registerMsg(this->ip);
+        cout << "registering msg has been sent" << endl;
+    } catch (const exception& e){
+        cerr << "Exception in registerPlayerOut" << endl;
+    }
 }
 
 // puts the player into the player list -- need mutexs
@@ -79,6 +93,11 @@ void Player::listGames(){
 
 // create a game and braodcast it on the LAN
 void Player::createGameOut(){
+    // check if your ip is empty
+    if (this->ip == ""){
+        cout << "You're unregistered and can't make a game yet" << endl;
+        return;
+    }
     // up the game count 
     gameCounter++;
     // give id 
@@ -111,20 +130,33 @@ void Player::createGameIn(int gameId, string hostIp){
 
 // notify the host of the game that you are joining, broadcast the game is full
 void Player::joinGameOut(int gameId){
-    // send join msg to host - tcp
-    joinGameMsg(this->ip);
-    // lock the mutex before accessing the shared memory 
-    lock_guard<mutex> lock(gamesMutex);
-    // connect to host and update the playerSd
-    this->playerSd = connectToHost("tcp", avaliableGames.at(gameId).hostIp);
-    // update the game playerSd too 
-    this->game.playerSd = this->playerSd;
-    // update the currentGame
-    this->currentGame = gameId;
-    // update your game list by removing the game you joined
-    avaliableGames.erase(gameId);
-    // broadcast that the game is full and should be removed from the list of games
-    gameFullMsg(gameId);
+    try {
+        // send join msg to host - tcp
+        joinGameMsg(this->ip);
+        // lock the mutex before accessing the shared memory 
+        lock_guard<mutex> lock(gamesMutex);
+        // check if the gameId exsits
+        if (avaliableGames.find(gameId) == avaliableGames.end()){
+            // the game don't exists
+            cout << "The game you want to join doesn't exist" << endl;
+            return;
+        }
+        // connect to host and update the playerSd
+        this->playerSd = connectToHost("tcp", avaliableGames.at(gameId).hostIp);
+        // update the game playerSd too 
+        this->game.playerSd = this->playerSd;
+        // update the currentGame
+        this->currentGame = gameId;
+        // update your game list by removing the game you joined
+        avaliableGames.erase(gameId);
+        // broadcast that the game is full and should be removed from the list of games
+        gameFullMsg(gameId);
+    } catch (const out_of_range& e){
+        cerr << "ERROR: Game ID is out of range" << endl;
+    } catch (const exception& e){
+        cerr << "ERROR: an exception occured while trying to join the game" << endl;
+    }
+    
 }
 
 // handling the recieving of a notification that a game is full -- need mutexs
@@ -142,12 +174,15 @@ void Player::joinGameIn(int gameId){
 
 // leave the game - handles both cases of the calling player being host and client 
 void Player::exitGameOut(){
+    // check if you are in a game
+    if (this-> currentGame == 0){
+        cout << "Your not in a game" << endl;
+        return;
+    }
     // if host
     if (this->game.host){
         // disconnect from client
         disconnectFromPlayer(this->playerSd);
-        // end game session ************** -- not super sure if this is needed -- but if it is it will be in the tictactoe protocols
- //       endGame();
     } 
     // if not host
     else{
@@ -255,12 +290,17 @@ void Player::setIpAsLocal(){
 // send a broadcast msg to register the player into other players list
 // sending your own ip
 void Player::registerMsg(string ip){
+    // check if the ip is empty
+    if (ip == ""){
+        cout << "Your IP has not been set right and you can't register" << endl;
+        return;
+    }
     // put the passed in values into an acceptable payload
     char payload[256];
     snprintf(payload, sizeof(payload), "%s", ip);
     // create the baseMsg
     // 1 = register msg
-    struct baseMsg msg(1, payload, strlen(payload));
+    struct baseMsg msg('1', payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -268,12 +308,17 @@ void Player::registerMsg(string ip){
 // send a broadcast msg to unregister the player from player lists
 // sending your own ip
 void Player::unregisterMsg(string ip){
+    // check if the ip is empty
+    if (ip == ""){
+        cout << "You were never registered" << endl;
+        return;
+    }
     // put the passed in values into an acceptable payload
     char payload[256];
     snprintf(payload, sizeof(payload), "%s", ip);
     // create the baseMsg
     // 2 = "unregister"
-    struct baseMsg msg(2, payload, strlen(payload));
+    struct baseMsg msg('2', payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -285,7 +330,7 @@ void Player::exitGameMsg(){
     string payload = "other player has left the game";
     // create the baseMsg
     // 3 = "exitGame"
-    struct baseMsg msg(3, payload.c_str(), payload.size());
+    struct baseMsg msg('3', payload.c_str(), payload.size());
     // send the baseMsg
     sendUdpMsg(this->playerSd, msg, this->playerinfo);
 }
@@ -297,7 +342,7 @@ void Player::createGameMsg(int gameId, string hostIp){
     snprintf(payload, sizeof(payload), "%d:%s", gameId, hostIp);
     // create the baseMsg
     // 4 = "createGame"
-    struct baseMsg msg(4, payload, strlen(payload));
+    struct baseMsg msg('4', payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -309,56 +354,62 @@ void Player::gameFullMsg(int gameId){
     snprintf(payload, sizeof(payload), "%d", gameId);
     // create the baseMsg
     // 5 = "gameFull"
-    struct baseMsg msg(5, payload, strlen(payload));
+    struct baseMsg msg('5', payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
 
 // tell the host you have joined their game, send your ip and the gameId
 void Player::joinGameMsg(string ip){
+    // check if the ip is empty
+    if (ip == ""){
+        cout << "Your not registered yet and can't join a game" << endl;
+        return;
+    }
     // put the passed in values into an acceptable payload
     char payload[256];
     snprintf(payload, sizeof(payload), "%s", ip.c_str());
     // create the baseMsg
     // 6 = "joinGame"
-    struct baseMsg msg(6, payload, strlen(payload));
+    struct baseMsg msg('6', payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->playerSd, msg, this->playerinfo);
 }
 
 // make a new thread, send the msg recieved
 thread* Player::makeThread(Player* player, baseMsg* msg){
+cout << "inside make thread" << endl;
     // create the thread
-    thread new_thread(&Player::processMsgs, player, msg);
-    // create a pointer
-    thread* threadPointer;
-    return threadPointer;
+    thread* new_thread = new thread(&Player::processMsgs, player, msg);
+cout << "make thread about to return" << endl;
+    return new_thread;
 }
 
 // process the messages being sent over broadcast
 void Player::processMsgs(baseMsg* msg){
+cout << "inside processMsgs" << endl;
     // check the type of the msg
     // register
-    if (msg->type == 1){
+    if (msg->type == '1'){
         // create storage the length of the payload
         string ip(msg->payload.begin(), msg->payload.end());
         // send the payload
         registerPlayerIn(ip);
     } 
     // unregister
-    else if (msg->type == 2){
+    else if (msg->type == '2'){
         // create storage the length of the payload
         string ip(msg->payload.begin(), msg->payload.end());
         // send the payload
         unregisterIn(ip);
     } 
     // exit game
-    else if (msg->type == 3){
+    else if (msg->type == '3'){
         // send the default msg
         exitGameIn();
     } 
     // create game
-    else if (msg->type == 4){
+    else if (msg->type == '4'){
         // break up the payload by length
         int gameId;
         string hostIp(msg->payload.begin() + sizeof(int), msg->payload.end());
@@ -368,14 +419,14 @@ void Player::processMsgs(baseMsg* msg){
         createGameIn(gameId, hostIp);
     } 
     // game full/ a game has been joined
-    else if (msg->type == 5 || msg->type == 6){
+    else if (msg->type == '5' || msg->type == '6'){
         // create storage the length of the payload
         int gameId;
         memcpy(&gameId, msg->payload.data(), sizeof(int));
         // send the payload
         joinGameIn(gameId);
     } else {
-        cerr << "ERROR: Unknown Msg type, unable to process msg" << endl;
+        cerr << "ERROR: Unknown Msg type: " << msg->type <<  ", unable to process msg" << endl;
     }
     delete msg;
 }
@@ -385,12 +436,15 @@ void Player::processMsgs(baseMsg* msg){
 // listen for msgs on the broadcast
 void Player::listenForMsgs(){
     while (!shutdown_flag){
+cout << "calling recieve non block udp" << endl;
         // read in a msg here 
         baseMsg* msg = receiveNonblockingUdp(this->broadSd, this->broadcastAddr);
         // make sure there is a msg 
         if (msg != nullptr){
+cout << "made a new thread to process a msg that was recieved" << endl;
             // make thread and have them run processMsgs() and pass in the msg recieved
             thread* new_thread = makeThread(this, msg);
+cout << "thread has been made and maybe finished running?" << endl;
             // put thread in vector
             threads.push_back(new_thread);
         }
@@ -400,13 +454,22 @@ void Player::listenForMsgs(){
 // print out the help message to the user
 void Player::printHelp(){
     cout << "These are the avaliable commands:" << endl;
-    cout << "   help                - Display this message" << endl;
-    cout << "   register            - Registers you into the player list" << endl;
+    cout << "   help               - Display this message" << endl;
+    cout << "   register           - Registers you into the player list" << endl;
     cout << "   listGames          - Lists the games avaliable to join" << endl;
     cout << "   createGame         - Host a game and wait for another player to join" << endl;
     cout << "   joinGame <gameId>  - Join the game assigned to the gameId" << endl;
     cout << "   exitGame           - Exit your current game" << endl;
-    cout << "   unregister          - Unregister yourself from the player list" << endl;
+    cout << "   unregister         - Unregister yourself from the player list" << endl;
+    cout << "   exit               - Exit the program" << endl;
+    cout << "   rules              - Get the rules of the game" << endl;
+}
+
+// print out the rules of the game
+void Player::printRules(){
+    cout << "These are the rules of the game:" << endl;
+    cout << "Moves are based on the 3x3 grid. 0 0 is the top left corner. Get 3 in a row to win. Host always goes first." << endl;
+    cout << "Type in exit to leave the current game." << endl;
 }
 
 // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
@@ -423,7 +486,7 @@ void Player::sendMsgs(int broadSd, struct addrinfo* clientinfo){
     // accept input from the user
     while(!shutdown_flag || !gameEnded){
         // prompt user for input
-        cout << "#: " << endl;
+        cout << "#: ";
         // get their response
         getline(cin, input);
 
@@ -443,6 +506,8 @@ void Player::sendMsgs(int broadSd, struct addrinfo* clientinfo){
         // if nothing was given
         if (tokens.empty()){
             continue; 
+        } else if (tokens[0] == "exit") {
+            exit(1);
         }
         // check for the basic commands
         else if (tokens[0] == "exitGame"){
@@ -450,10 +515,12 @@ void Player::sendMsgs(int broadSd, struct addrinfo* clientinfo){
         } else if (tokens[0] == "help"){
             printHelp();
         } else if (tokens[0] == "register"){
+            cerr << "calling the registerPlayerOut" << endl;
             registerPlayerOut();
+            cout << "registerPlayerOut command was processed" << endl;
         } else if (tokens[0] == "listGames"){
             listGames();
-        } else if (tokens[0] == "createGames"){
+        } else if (tokens[0] == "createGame"){
             createGameOut();
         } else if (tokens[0] == "joinGame"){
             // grab the game Id
@@ -464,8 +531,10 @@ void Player::sendMsgs(int broadSd, struct addrinfo* clientinfo){
             }
         } else if (tokens[0] == "unregister"){
             unregisterOut();
+        } else if (tokens[0] == "rules"){
+            printRules();
         } else {
-            cout << "ERROR: Unknown command" << endl;
+            cerr << "ERROR: Unknown command" << endl;
         }
     }
 }
