@@ -23,7 +23,7 @@ class TicTacToe {
     // used to show if you are hosting a game
     bool host = false;
     // same sd as in the player object but is here for simplicity 
-    int playerSd;
+    int playerSd = 0;
 
     // input move 
     // checks if the move is from the host - host is always X, client is always O
