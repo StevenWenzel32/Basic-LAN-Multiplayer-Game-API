@@ -37,28 +37,22 @@
 #include <unistd.h>      // For gethostname
 #include <netdb.h>       // For getaddrinfo
 #include <arpa/inet.h>   // For inet_ntop
-#include <signal.h>      // for the shutdown signal
 #include <mutex>         // for mutexes
 #include <sstream>       // for stringstream stuff
 #include <cctype>        // For std::isdigit
+#include <thread>        // For std::thread
+#include <algorithm>     // For std::all_of
+#include <signal.h>      // for the shutdown signal
+#include <csignal>
 
 // my files
-// the game related and specifc protocols - this file should include the basicNetworking
 #include "TicTacToeGame.hpp"
 
 // port to use to listen and send on broadcast
 #define PORT "2087"
 
 // flag to exit loops when shutting down
-volatile sig_atomic_t shutdown_flag = 0;
-// to mark if the game should be ended and the player should return to being able to send new msgs
-bool gameEnded = false;
-// holds threads to make sure they are cleaned up nice later
-vector<pthread_t> threads; 
-// mutex to protect the players map
-mutex playersMutex;
-// mutex to protect the game map
-mutex gamesMutex;
+extern volatile sig_atomic_t shutdown_flag;
 
 // structs 
 // game struct to be put into local list of games to join
@@ -77,16 +71,7 @@ struct player{
     string ip;
 };
 
-// list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
-unordered_map<int, player> players;
-// used to create player ids
-int playerCounter = 1;
-
-// list of games that can be joined
-// maps the gameId to the game
-unordered_map<int, struct game> avaliableGames;
-// counter to create game ids
-int gameCounter = 1;
+void signalHandler(int signum);
 
 class Player {
     public: 
@@ -132,24 +117,22 @@ class Player {
 
     // helper functions for the above core functions
     // connect the client player to the host player - client side
-    void connectToHost(string type, string hostIp);
+    int connectToHost(string type, string hostIp);
     // accepts the connection to the client player - host side
-    void acceptClientPlayer();
+    int acceptClientPlayer();
     // disconnects the socket if TCP
     // stops listening for msgs from the other player if UDP
     void disconnectFromPlayer(int playerSd);
-    // to help exit loops and shut down nicely 
-    void signalHandler(int signum);
     // make a new thread, send the msg recieved
-    pthread_t makeThread(baseMsg* msg);
+    thread* makeThread(Player* player, baseMsg* msg);
     // set the players ip to the local users ip 
     void setIpAsLocal();
     void printHelp();
 
     // process the messages being sent over broadcast
-    void* processMsgs(void* data);
+    void processMsgs(baseMsg* msg);
     // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols
-    void sendMsgs(int broadSd, struct addrinfo* clientinfo)
+    void sendMsgs(int broadSd, struct addrinfo* clientinfo);
     // listen for msgs on the broadcast
     void listenForMsgs();
 
@@ -177,8 +160,6 @@ class Player {
     string ip = "";
     // used to place player in the local unordered map
     int id = 0;
-    // used to show if you are hosting a game
-    bool host = false;
     // if usernames are being used the player can change it at any time
 //    string username;
 
@@ -190,11 +171,33 @@ class Player {
     // the socket for sending broadcast msgs and for listening for broadcast msgs
     int broadSd;
     // the addrinfo for sending on broadcast
-    sockaddr_in broadcastAddr{};
+    struct sockaddr_in broadcastAddr{};
+
 
     // vars related to the current session
     // game changes when they leave or join a game
     int currentGame = 0;
+    TicTacToe game;
+
+    // list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
+    unordered_map<int, player> players;
+    // used to create player ids
+    int playerCounter = 1;
+
+    // list of games that can be joined
+    // maps the gameId to the game
+    unordered_map<int, struct game> avaliableGames;
+    // counter to create game ids
+    int gameCounter = 1;
+
+    // to mark if the game should be ended and the player should return to being able to send new msgs
+    bool gameEnded = false;
+    // holds threads to make sure they are cleaned up nice later
+    vector<thread*> threads; 
+    // mutex to protect the players map
+    mutex playersMutex;
+    // mutex to protect the game map
+    mutex gamesMutex;
 };
 
 #endif
