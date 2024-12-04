@@ -44,7 +44,8 @@
 #include "TicTacToeGame.hpp"
 
 // port to use to listen and send on broadcast
-#define PORT "2087"
+#define UDP_PORT "2087"
+#define TCP_PORT "2088"
 
 // flag to exit loops when shutting down
 extern volatile sig_atomic_t shutdown_flag;
@@ -161,6 +162,8 @@ class Player {
     // if usernames are being used the player can change it at any time
 //    string username;
 
+    // sd to use to listen for TCP connections
+    int tcpListenSd;
     // the sd to use to connect to the other player
     // can be either tcp or udp - can later use both to connect to the player
     int playerSd;
