@@ -39,7 +39,7 @@ struct addrinfo* makeAddrinfo(string type, string port){
 }
 
 // handle making the socket structs -- can make both TCP and UDP sockets, takes in port #
-struct addrinfo* makeAddrinfo(string type, const char* serverIp, string port){
+struct addrinfo* makeAddrinfo(string type, string serverIp, string port){
     // for checking the return of getaddrinfo
     int status;
     // holds the info for the client address
@@ -55,14 +55,14 @@ struct addrinfo* makeAddrinfo(string type, const char* serverIp, string port){
     // check what type of socket
     if (type == "udp"){
         // udp sockets
-        server_addr.ai_socktype = SOCK_DGRAM;
+        client_addr.ai_socktype = SOCK_DGRAM;
     } else if (type == "tcp"){
         // tcp stream sockets
-        server_addr.ai_socktype = SOCK_STREAM;
+        client_addr.ai_socktype = SOCK_STREAM;
     }
     
     // getaddrinfo with error check
-    if ((status = getaddrinfo(serverIp, port.c_str(), &client_addr, &servinfo)) != 0 ) {
+    if ((status = getaddrinfo(serverIp.c_str(), port.c_str(), &client_addr, &servinfo)) != 0 ) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         exit(1);
     }
@@ -193,12 +193,23 @@ vector<char> serializeBaseMsg(const baseMsg& msg){
     return serializedMsg;
 }
 
-// send a UDP msg as baseMsg
+// send a UDP msg as baseMsg - takes in adrrinfo
 void sendUdpMsg(int sd, const baseMsg& msg, struct addrinfo *servinfo){
     // convert the baseMsg into a vecctor<char>
     vector<char> converted = serializeBaseMsg(msg);
 
     int bytes_sent = sendto(sd, converted.data(), converted.size(), 0, servinfo->ai_addr, servinfo->ai_addrlen);
+    if (bytes_sent == -1){
+        cerr << "Problem with UDP send" << endl;
+    }
+}
+
+// send a UDP msg as baseMsg - takes in sturctaddr_in
+void sendUdpMsg(int sd, const baseMsg& msg, struct sockaddr_in addrinfo){
+    // convert the baseMsg into a vecctor<char>
+    vector<char> converted = serializeBaseMsg(msg);
+
+    int bytes_sent = sendto(sd, converted.data(), converted.size(), 0, reinterpret_cast<struct sockaddr*>(&addrinfo), sizeof(addrinfo));
     if (bytes_sent == -1){
         cerr << "Problem with UDP send" << endl;
     }
@@ -320,6 +331,59 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
     return msg;
 }
 
+// recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in a struct sockadrr_in
+baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
+    int messageBuf[BUFFER_SIZE] = {0};
+    // put the size of the addrinfo into right var
+    socklen_t addrLen = sizeof(addrinfo);
+    // recieve the message into the msg[] array and make sure it was read correctly
+    int nRead = recvfrom(sd, &messageBuf, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&addrinfo), &addrLen);
+    // error checks
+    if (nRead == -1){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // do nothing simply nothing to read yet
+            return nullptr;
+        } else {
+            cerr << "Error reading from socket: SD = " << sd << endl; 
+            return nullptr;
+        }
+    } else if (nRead == 0) {
+        cerr << "Client closed the connection" << endl;
+        return nullptr;
+    }
+    
+    // check if the length of the packet has come through
+    if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
+        // not enough data for the packet header
+        return nullptr;
+    }
+
+    // to hold the packet length
+    unsigned int packetLength = 0;
+    // copy the first 4 bytes into the packetLength
+    memcpy(&packetLength, messageBuf, sizeof(packetLength));
+    // convert the byte order from network into host for type long
+    packetLength = ntohl(packetLength);
+
+    // get the msg type
+    unsigned char packetType = messageBuf[sizeof(unsigned int)];
+
+    // check if you have the whole packet now
+    if (nRead < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
+        // don't have the whole packet yet
+        return nullptr;
+    }
+
+    // grab the payload of the msg
+    vector<char> packetPayload(messageBuf + sizeof(unsigned int) + sizeof(unsigned char), 
+        messageBuf + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
+
+    // create a baseMsg to return
+    baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
+
+    return msg;
+}
+
 // receive msg, blocking/stop and wait - tcp
 baseMsg receiveBlockingTcp(int sd){
     // define the header size
@@ -335,10 +399,10 @@ baseMsg receiveBlockingTcp(int sd){
         int nRead = recv(sd, headerBuffer + totalRead, HEADER_SIZE - totalRead, 0);
         if (nRead == -1){
             cerr << "Error reading from socket: SD = " << sd << endl; 
-            return nullptr; 
+            break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
-            return nullptr;
+            break;
         }
         // add the current bytes read to the total
         totalRead += nRead;
@@ -364,10 +428,10 @@ baseMsg receiveBlockingTcp(int sd){
         int nRead = recv(sd, payload.data() + totalRead, payloadLength - totalRead, 0);
         if (nRead == -1){
             cerr << "Error reading from socket: SD = " << sd << endl; 
-            return nullptr; 
+            break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
-            return nullptr;
+            break;
         }
         // add the current bytes read to the total
         totalRead += nRead;
