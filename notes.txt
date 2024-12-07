@@ -40,7 +40,7 @@ KNIGHT AND SLIME
 	Project notes 
 	- no socket calls in game code = build API first 
 	- think about the arcitecture before hand
-		- pure p2p 
+		- pure p2p - what I tried first
 			- use broadcast on LAN - wired or wireless 
 			- or use multicast group 
 			- game is run on the clients 
@@ -48,7 +48,7 @@ KNIGHT AND SLIME
 			- clients send to server
 			- all connections go through the server 
 			- the game is run through the server 
-		- hyrid p2p 
+		- hyrid p2p - what I should have done from the start - am switching to now 
 			- uses server to help the start of the game	
 				- match making
 			- the game is run on the clients 

@@ -1,0 +1,21 @@
+1) 
+alice wants to send a msg to bob
+- it is confidential 
+- authenticated
+- can't be replayed
+- they already have each others public keys
+
++ = public key 
+- = private key
+ks = session key
+H = hash 
+m = msg 
+HMAC = a hash using a key in the process
+
+nonce 
+
+	
+(ka-(m,nonce) = msg and nonce encrpyted with alices private key 
+kb+(ks) = session key encrpyted with bobs public key 
+ks(H(ka-(m,nonce)) + m) + kb+(ks)
+
