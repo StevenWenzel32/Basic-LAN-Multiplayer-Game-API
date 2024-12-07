@@ -31,9 +31,6 @@
 #include <unistd.h>
 
 // hard coded values
-// # of connection requests for the server to listen to at a time
-// based losely off of the class size
-#define BACKLOG 50
 // end of the whole message -- not sure if it's needed
 #define MSG_END "byebyeBABY"
 // size to make the buffer for recieving the data in msgs
@@ -95,8 +92,8 @@ void connectSocket(int clientSd, struct addrinfo* servinfo);
 // ends the connection
 void closeSocket(int sd);
 
-// get the local broadcast address
-string getBoradcastAddr();
+// get the local broadcast address and return it
+string getBroadcastAddr();
 
 // msg sending
 // helper function to searliaze the baseMsg into a vector<char> so the send will work right

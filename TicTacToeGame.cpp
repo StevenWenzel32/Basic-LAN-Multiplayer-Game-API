@@ -23,7 +23,6 @@ void TicTacToe::processMove(int x, int y){
             grid[y][x] = 'X';
             // check if this move lets them win
             checkForWin('X');
-            return;
         } else {
             cout << "that is not a valid move" << endl;
         }  
@@ -33,11 +32,12 @@ void TicTacToe::processMove(int x, int y){
             grid[y][x] = 'O';
             // check if this move lets them win
             checkForWin('O');
-            return;
         } else {
             cout << "that is not a valid move" << endl;
         }
     }
+    // print out new grid
+    printGrid();
 }
 
 // go through and check for 3 in a row in the grid for the passed in mark
@@ -139,14 +139,11 @@ void TicTacToe::checkDiagonalLeftRight(char mark){
 void TicTacToe::checkDiagonalRightLeft(char mark){
     // counter for the mark
     int markCount = 0;
-    // move down the columns
-    for (int j = 2; j > 0; j--){
-        // move up the rows
-        for (int i = 0; i < 3; i++){
-            // up the counts for the row
-            if (grid[i][j] == mark){
-                markCount++;
-            }
+    // move up the rows
+    for (int i = 0; i < 3; i++){
+        // up the counts for the row
+        if (grid[i][2 - i] == mark){
+            markCount++;
         }
     }
     // check if they won
@@ -204,46 +201,54 @@ void TicTacToe::readMsg(){
         // no player has joined yet
         cout << "no player has joined your game yet, please wait..." << endl;
         // loop until they join
-        while (this->playerSd == 0){
+        while (this->playerSd == 0 && !GlobalFlags::shutdown_flag){
 
         }
     }
     // read in the msg -- tic protocols related
     struct baseMsg msg = receiveBlockingTcp(this->playerSd);
-
-    // check if the msg type is a move
-    if (msg.type == 1){
-        // put the payload into a sstream
-        istringstream payloadStream(string(msg.payload.begin(), msg.payload.end()));
-        // parse the payload
-        int x, y;
-        if (payloadStream >> x >> y){
-            // feed it into process move
-            processMove(x, y);
-        } else {
-            cerr << "ERROR: bad move given" << endl;
-        }
-    } else if (msg.type == 2){
-        // put the payload into a sstream
-        istringstream payloadStream(string(msg.payload.begin(), msg.payload.end() - sizeof(bool)));
-        // set your grid to the grid received
-        for (int i = 0; i < 3; i++){
-            for (int j = 0; j < 3; j++){
-                payloadStream >> grid[i][j];
+    // make sure there is a msg 
+    if (!msg.payload.empty()){
+        // check if the msg type is a move
+        if (msg.type == 1){
+            // put the payload into a sstream
+            istringstream payloadStream(string(msg.payload.begin(), msg.payload.end()));
+            // parse the payload
+            int x, y;
+            if (payloadStream >> x >> y){
+                // feed it into process move
+                processMove(x, y);
+            } else {
+                cerr << "ERROR: bad move given" << endl;
             }
+        } else if (msg.type == 2){
+            // put the payload into a sstream
+            istringstream payloadStream(string(msg.payload.begin(), msg.payload.end() - sizeof(bool)));
+            // set your grid to the grid received
+            for (int i = 0; i < 3; i++){
+                for (int j = 0; j < 3; j++){
+                    payloadStream >> grid[i][j];
+                }
+            }
+            // grab the bool state of the game
+            bool gameState;
+            payloadStream >> gameState;
+            // update the over state of the game
+            this->over = gameState;
+            // print out new grid
+            printGrid();
+        } else {
+            cerr << "ERROR: Unknown game msg type" << endl;
         }
-        // grab the bool state of the game
-        bool gameState;
-        payloadStream >> gameState;
-        // update the over state of the game
-        this->over = gameState;
-    } else {
-        cerr << "ERROR: Unknown game msg type" << endl;
     }
 }
 
 // prompt the user for their move, if host process it, if client send it
 void TicTacToe::movePrompt(){
+    // set stdin to blocking mode -- it might have been inadvertantly changed to non-blocking due to the sockets being non-blocking
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK);
+
     // send msg to user
     cout << "Please enter your move as a coordinate point using a space (ex: 1 2): " << endl;
     cout << "Your move: ";
@@ -265,29 +270,66 @@ void TicTacToe::movePrompt(){
         tokens.push_back(token);
     }
 
+    // check the length of tokens
+    if (tokens.size() >= 3){
+        cerr << "Move is too long" << endl;
+        movePrompt();
+    }
     // check for exit command
-    if (tokens[0] == "exit"){
-        this->over = true;
+    else if (tokens.size() == 1){
+        if (tokens[0] == "exitGame"){
+            cout << "exit game cmd sent" << endl;
+            exitGameOut();
+        } else {
+            cerr << "This is not an accepted game command" << endl;
+            movePrompt();
+        }
+    } else if (tokens.size() == 2){
+        // if host process the move
+        if (this->host){
+cout << "game move processing" << endl;
+            // process your move
+            processMove(stoi(tokens[0]), stoi(tokens[1]));
+            // send the new game state/grid to the client
+            sendState(this->grid, this->over);
+        } else {
+cout << "game move being sent" << endl;
+            // send the move
+            sendMove(stoi(tokens[0]), stoi(tokens[1]));
+        }
     }
-    // if host process the move
-    else if (this->host){
-        // process your move
-        processMove(stoi(tokens[0]), stoi(tokens[1]));
-    } else {
-        // send the move
-        sendMove(stoi(tokens[0]), stoi(tokens[1]));
+}
+
+// closes the connection socket or the listening socket
+void TicTacToe::disconnectFromPlayer(int playerSd){
+    this->playerSd = 0;
+    closeSocket(playerSd);
+}
+
+// leave the game - handles both cases of the calling player being host and client 
+void TicTacToe::exitGameOut(){
+    // check if you are in a game
+    if (this->id == 0){
+        cout << "Your not in a game" << endl;
+        return;
     }
+
+    disconnectFromPlayer(this->playerSd);
+
+    // reset your game
+    this->id = 0;
+    this->over = true;
 }
 
 // send move - used by the client
 void TicTacToe::sendMove(int x, int y){
-cout << "entered send move" << endl;
+//cout << "entered send move" << endl;
     // check if the playerSd is empty
     if (this->playerSd == 0){
         // no player has joined yet
         cout << "Your move will be sent once a player joins your game, please wait..." << endl;
         // loop until they join
-        while (this->playerSd == 0){
+        while (this->playerSd == 0 && !GlobalFlags::shutdown_flag){
 
         }
     }
@@ -297,19 +339,19 @@ cout << "entered send move" << endl;
     // make a new base msg
     // 1 = move
     struct baseMsg msg(1, payload, strlen(payload));
-cout << "about to call sendTCpMsg" << endl;
+//cout << "about to call sendTCpMsg" << endl;
     sendTcpMsg(this->playerSd, msg);
 }
 
 // send game state - used by host 
 void TicTacToe::sendState(char grid[3][3], bool over){
-    cout << "entered send state" << endl;
+//    cout << "entered send state" << endl;
     // check if the playerSd is empty
     if (this->playerSd == 0){
         // no player has joined yet
         cout << "Your move will be sent once a player joins your game, please wait..." << endl;
         // loop until they join
-        while (this->playerSd == 0){
+        while (this->playerSd == 0 && !GlobalFlags::shutdown_flag){
 
         }
     }
@@ -339,42 +381,41 @@ void TicTacToe::sendCatsMsg(){
 
 // start a game and the make the player who started it the host -- the game logic "main"
 void TicTacToe::startGame(){
-    if (this->host){
-        // give a game start msg
-        cout << "The game has started" << endl;
-    } else {
-        cout << "You have joined the game! The host goes first" << endl;
-    }
-    
     // intialize the grid to be filled with _
     fill(&this->grid[0][0], &this->grid[0][0] + sizeof(this->grid), '_');
 
     if (this->host){
-        // print out the empty grid
-        printGrid();
+        // give a game start msg
+        cout << "The game has started, go first while you wait for another player to join" << endl;
+    } else {
+        cout << "You have joined the game! The host goes first, so you might have to wait for your turn" << endl;
     }
+        
+    // print out the empty grid
+    printGrid();
 
-    // loop through sending and retreiving moves and states -- while the game is still playing
-    while (!this->over){
-        // check if you aren't the host
-        if (!this->host){
-            // other players turn
-            // check if there is a msg to read in -- blocking
+    // first move 
+    // if not host go second
+    if (!this->host){
+        // client player loop
+        while (!this->over && !GlobalFlags::shutdown_flag){
+            // other players turn -- check if there is a msg to read in -- blocking
             readMsg();
-            // print out new grid
-            printGrid();
+            // your turn
+            movePrompt();
         }
-
-        // your turn 
-        // prompt the user for their move
-        movePrompt();
-        // print out the new grid
-        printGrid();
-
-        // check if host
-        if (this->host){
-            // send the new game state/grid to the client
-            sendState(this->grid, this->over);
-        } 
+    } 
+    // if host go first
+    else {
+        // host player loop
+        while (!this->over && !GlobalFlags::shutdown_flag){
+            // your turn
+            movePrompt();
+            // if over skip this 
+            if (!this->over){
+                // other players turn -- check if there is a msg to read in -- blocking
+                readMsg();
+            }
+        }
     }
 }

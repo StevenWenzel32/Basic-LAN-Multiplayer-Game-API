@@ -137,27 +137,30 @@ void listening(int serverSd, int backlog){
     if (listening == -1) {
         cerr << "Error listening on socket: serverSd - " << serverSd << endl;
     } else {
-        cout << "Server: Waiting for connections..." << endl;
+        cout << "Host: Waiting for connections..." << endl;
     }
 }
 
-int acceptConnection(int serverSd){
+int acceptConnection(int tcpSd){
     // connector's address information can be either IPv4 or IPv6
     struct sockaddr_storage their_addr;
     // size of clients address
     socklen_t their_AddrSize = sizeof(their_addr);
+cout << "before accept call" << endl;
     // Accept the connection as a new socket
-    int newSd = accept(serverSd, (struct sockaddr *)&their_addr, &their_AddrSize);
+    int newSd = accept(tcpSd, (struct sockaddr *)&their_addr, &their_AddrSize);
+cout << "after accept call" << endl;
     // check if the connection was made properly
     if (newSd == -1) {
         // check if there are no pending connections -- not a real error 
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+cout << "No pending connections (non-blocking socket)." << endl;
         } else {
             // connect fails
-            cerr << "Error accepting connection on socket: serverSd - " << serverSd << endl;
+            cerr << "Error accepting connection on socket: serverSd = " << tcpSd << ", error = " << strerror(errno) << endl;
         }
     } else {
-      //  cerr << "Connection made on socket: newSd - " << newSd << endl;
+        cout << "Connection made on socket: newSd = " << newSd << endl;
     }
     return newSd;
 }
@@ -174,49 +177,83 @@ void connectSocket(int clientSd, struct addrinfo* servinfo){
     freeaddrinfo(servinfo);
 }
 
-// get the local broadcast address
-string getBoradcastAddr(){
+// find out the local broadcasting network address and return the address
+string getBroadcastAddr() {
     struct ifreq ifr;
     struct sockaddr_in* addr;
 
-    // open a socket for the ioctl operation
+    // Open a socket for the ioctl operation
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock == -1){
-        perror("socket error");
+    if (sock == -1) {
+        perror("Socket error");
         return "";
     }
 
-    // get the ip address of the interface
-    if (ioctl(sock, SIOCGIFADDR, &ifr) == -1){
-        perror("IOCTL error getting ip address");
+    // Try to get the IP address of the default interface (e.g., eth0 or wlan0)
+    string ipAddress = "";
+    string netmask = "";
+
+    // Loop through all available interfaces
+    struct ifreq ifr_list[10]; // Assuming a max of 10 interfaces
+    struct ifconf ifc;
+    ifc.ifc_len = sizeof(ifr_list);
+    ifc.ifc_req = ifr_list;
+
+    if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) {
+        perror("IOCTL error getting interface list");
         close(sock);
         return "";
     }
-    addr = (struct sockaddr_in*)&ifr.ifr_addr;
-    string ipAddress = inet_nota(addr->sin_addr);
 
-    // get the subnet mask of the interface
-    if (ioctl(sock, SIOCGIFNETMASK, &ifr) == -1){
-        perror("IOCTL error getting subnet mask");
+    // Check each interface
+    for (int i = 0; i < ifc.ifc_len / sizeof(struct ifreq); i++) {
+        string interface_name = ifr_list[i].ifr_name;
+
+        // Skip interfaces like lo (loopback)
+        if (interface_name == "lo") continue;
+
+        // Get the IP address of the current interface
+        if (ioctl(sock, SIOCGIFADDR, &ifr_list[i]) == -1) {
+            // can somw how pass the interface name
+            perror("IOCTL error getting IP address for interface ");
+            continue;
+        }
+        addr = (struct sockaddr_in*)&ifr_list[i].ifr_addr;
+        ipAddress = inet_ntoa(addr->sin_addr);
+
+        // Get the subnet mask of the current interface
+        if (ioctl(sock, SIOCGIFNETMASK, &ifr_list[i]) == -1) {
+            perror("IOCTL error getting subnet mask for interface ");
+            continue;
+        }
+        addr = (struct sockaddr_in*)&ifr_list[i].ifr_netmask;
+        netmask = inet_ntoa(addr->sin_addr);
+
+        // Found a valid IP and netmask, exit the loop
+        if (!ipAddress.empty() && !netmask.empty()) {
+            break;
+        }
+    }
+
+    // If no valid IP address was found, close the socket and return an empty string
+    if (ipAddress.empty() || netmask.empty()) {
+        cerr << "Error: Could not find valid IP address and netmask for any network interface." << endl;
         close(sock);
         return "";
     }
-    addr = (struct sockaddr_in*)&ifr.ifr_netmask;
-    string netmask = inet_ntoa(addr->sin_addr);
 
-    // clsoe the sokcet
-    close(sock);
-
-    // convert the ip and subnet mask to numeric form
+    // Convert the IP and subnet mask to numeric form
     struct in_addr ip, mask;
     inet_pton(AF_INET, ipAddress.c_str(), &ip);
     inet_pton(AF_INET, netmask.c_str(), &mask);
 
-    // calualte the boradcast address (ip | ~mask)
+    // Calculate the broadcast address (ip | ~mask)
     struct in_addr broadcast;
     broadcast.s_addr = ip.s_addr | (~mask.s_addr);
 
-    return inet_nota(broadcast);
+    // Close the socket and return the broadcast address
+    close(sock);
+    return inet_ntoa(broadcast);
 }
 
 // types of sending and recieving below here -- alow with some helpers
@@ -400,7 +437,7 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
         cerr << "Client closed the connection" << endl;
         return nullptr;
     }
-    
+
     // check if the header has come through
     if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
         // not enough data for the packet header
@@ -446,7 +483,7 @@ baseMsg receiveBlockingTcp(int sd){
         // read the data from the socket
         int nRead = recv(sd, headerBuffer + totalRead, HEADER_SIZE - totalRead, 0);
         if (nRead == -1){
-            cerr << "Error reading from socket: SD = " << sd << endl; 
+            cerr << "Error reading from blocking TCP socket: SD = " << sd << endl; 
             break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
@@ -464,7 +501,7 @@ baseMsg receiveBlockingTcp(int sd){
     memcpy(&payloadLength, headerBuffer, sizeof(payloadLength));
     memcpy(&type, headerBuffer + sizeof(payloadLength), sizeof(type));
     
-    // convert to host byte order
+    // convert to host byte order -- no switching done on other side 
     payloadLength = ntohl(payloadLength);
 
     // read in the payload 
@@ -475,7 +512,7 @@ baseMsg receiveBlockingTcp(int sd){
     while(totalRead < payloadLength){
         int nRead = recv(sd, payload.data() + totalRead, payloadLength - totalRead, 0);
         if (nRead == -1){
-            cerr << "Error reading from socket: SD = " << sd << endl; 
+            cerr << "Error reading from TCP blocking socket: SD = " << sd << ", errno = " << errno << endl; 
             break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
@@ -518,7 +555,7 @@ baseMsg* receiveNonblockingTcp(int sd){
             unsigned int packetLength = 0;
             // copy the first 4 bytes into the packetLength
             memcpy(&packetLength, incompletePacket.data(), sizeof(packetLength));
-            // convert the byte order from network into host for type long
+            // convert the byte order from network into host for type long - no conversion before send
             packetLength = ntohl(packetLength);
 
             // check if you have the whole packet now
@@ -546,7 +583,7 @@ baseMsg* receiveNonblockingTcp(int sd){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             // do nothing simply nothing to read yet
         } else {
-            cerr << "Error reading from socket: SD = " << sd << endl; 
+            cerr << "Error reading from TCP non blocking socket: SD = " << sd << endl; 
         }
     } else if (nRead == 0) {
         cerr << "Client closed the connection" << endl;

@@ -42,13 +42,11 @@
 
 // my files
 #include "TicTacToeGame.hpp"
+#include "globalFlags.hpp"
 
 // port to use to listen and send on broadcast
 #define UDP_PORT "2087"
 #define TCP_PORT "2088"
-
-// flag to exit loops when shutting down
-extern volatile sig_atomic_t shutdown_flag;
 
 // structs 
 // game struct to be put into local list of games to join
@@ -67,8 +65,6 @@ struct player{
     string ip;
 };
 
-void signalHandler(int signum);
-
 class Player {
     public: 
     Player();
@@ -81,7 +77,7 @@ class Player {
     // kill the connection to the server
 //    void disconnectFromServer();
 
-    // out functions - change these to send msgs to the server **************
+    // out functions
     // broadcast on LAN avaliable to play, carries contact info
     // maybe add a player username
     void registerPlayerOut();
@@ -89,20 +85,16 @@ class Player {
     void createGameOut();
     // notify the host of the game that you are joining, broadcast the game is full
     void joinGameOut(int gameId);
-    // leave the game - handles both cases of the calling player being host and client 
-    void exitGameOut();
     // remove yourslef from your player list and broadcast to others to remove you
     void unregisterOut();
 
-    // in functions / msg processing - repalce these with functions process the update msgs received from the server *****************
+    // in functions / msg processing
     // puts the player into the player list
     void registerPlayerIn(string ip);
     // handling the recieving of a notification that a new game was created
     void createGameIn(int gameId, string hostIp);
     // handling the recieving of a notification that a game is full
     void joinGameIn(int gameId);
-    // handles revceiving a exitGameMsg -- might not actually need
-    void exitGameIn();
     // handles reciving a broadcasted unregisterMsg -- might not actually need a list of players
     void unregisterIn(string playerIp);
 
@@ -115,12 +107,7 @@ class Player {
     // connect the client player to the host player - client side
     int connectToHost(string type, string hostIp);
     // accepts the connection to the client player - host side
-    int acceptClientPlayer();
-    // disconnects the socket if TCP
-    // stops listening for msgs from the other player if UDP
-    void disconnectFromPlayer(int playerSd);
-    // make a new thread, send the msg recieved
-    thread* makeThread(Player* player, baseMsg* msg);
+    void acceptClientPlayer();
     // set the players ip to the local users ip 
     void setIpAsLocal();
     // print out the commands for this program - not the game!
@@ -128,14 +115,16 @@ class Player {
     // print out the rules of the game - tic tac toe
     void printRules();
 
-    // process the messages being sent over broadcast - change to process msgs from the server *********
-    void processMsgs(baseMsg* msg);
-    // main thread sends msgs - handles the player executing/sending out their broadcast msgs and protocols - change *************
-    void sendMsgs(int broadSd, struct addrinfo* clientinfo);
-    // listen for msgs on the broadcast and tcp listneing socket
-    void listenForMsgs();
+    // process the messages being sent over broadcast
+    void processUdpMsgs(baseMsg* msg);
+    // processes the cmds given by the user
+    void inputPrompt();
+    // prompts user for input
+    void processProgramCmds(string input);
+    // listen for msgs on the broadcast - manages the match making
+    void listenForUdpMsgs();
 
-    // msg creation and sending funcs - change these to send msgs to the server **********************
+    // msg creation and sending funcs
     // the port might be unneeded
     // send a broadcast msg to register the player into other players list
     // sending your own ip
@@ -143,15 +132,10 @@ class Player {
     // send a broadcast msg to unregister the player from player lists
     // sending your own ip
     void unregisterMsg(string ip);
-    // send a msg to the other player that you are leaving the game
-    // might not be needed escentailly sending just a default msg ****
-    void exitGameMsg();
     // broadcast the creation of a game, sends the game info
     void createGameMsg(int gameId, string hostIp);
     // broadcast that the game you just joined is full, send gameId
     void gameFullMsg(int gameId);
-    // tell the host you have joined their game, send your ip and the gameId
-    void joinGameMsg(string ip);
 
 //    protected:
     // vars related to the players device
@@ -164,20 +148,13 @@ class Player {
 
     // sd to use to listen for TCP connections
     int tcpListenSd;
-    // the sd to use to connect to the other player
-    // can be either tcp or udp - can later use both to connect to the player
-    int playerSd;
-    // if the above if a udp - this is the other players info
-    struct addrinfo* playerinfo;
     // the socket for sending broadcast msgs and for listening for broadcast msgs
     int broadSd;
     // the addrinfo for sending on broadcast
     struct sockaddr_in broadcastAddr{};
 
-
-    // vars related to the current session
-    // game changes when they leave or join a game
-    int currentGame = 0;
+    // vars related to the current session - include host info, and the other players info
+    // game changes when they leave or join a game - add in game deletes and fill in the destructor
     TicTacToe game;
 
     // list of players - expecting around 50 players - class size is less than 45 - does not contain yourself
@@ -191,8 +168,6 @@ class Player {
     // counter to create game ids
     int gameCounter = 1;
 
-    // to mark if the game should be ended and the player should return to being able to send new msgs
-    bool gameEnded = false;
     // holds threads to make sure they are cleaned up nice later
     vector<thread*> threads; 
     // mutex to protect the players map
