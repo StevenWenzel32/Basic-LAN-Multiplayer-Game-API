@@ -44,18 +44,24 @@ struct baseMsg {
     // the length of the msg being sent
     unsigned int length;
     // the type of msg being sent
-    unsigned char type;
+    int type = 0;
     // data to send should be other data packet structs
     vector<char> payload;
 
-    // constructor with passing in values
-    baseMsg(unsigned char msgType, const char* payloadData, unsigned int payloadSize){
+    // constructor with passing in all values
+    baseMsg(int msgType, const char* payloadData, unsigned int payloadSize){
         // get the payload size and the size of the type var
         length = payloadSize;
         // pass in the type
         type = msgType;
         // pass in the payload data and its size
         payload.assign(payloadData, payloadData + payloadSize);
+    }
+
+    // error constructor that only takes in a msg type
+    baseMsg(int msgType){
+        // pass in the type
+        type = msgType;
     }
 };
 
@@ -112,18 +118,17 @@ void sendTcpMsg(int sd, const baseMsg& message);
 // should also make a blocking version later **
 // receive a UDP msg, returns the msg as char[] -- does not wait for a response/non blocking
 //char* receiveUdp(int clientSd, struct addrinfo* servinfo);
-// actually used ***
+
 // recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in adrrinfo
 baseMsg* receiveNonblockingUdp(int clientSd, struct addrinfo* addrinfo);
 // recieve a UDP msg, non blocking, returns msg as baseMsg* - takes in structaddr_in
 baseMsg* receiveNonblockingUdp(int clientSd, struct sockaddr_in addrinfo);
 
-// receive msg, blocking/stop and wait, returns msg as char* - tcp
+// receive msg, blocking/stop and wait, returns msg as baseMsg - tcp
 baseMsg receiveBlockingTcp(int sd);
 
-// this is being used
 // this is a great example of how the other receives should be made later on ***
 // receive a TCP msg, non-blocking does not wait, returns msg as baseMsg*
-baseMsg* receiveNonblockingTcp(int sd);
+baseMsg receiveNonblockingTcp(int sd);
 
 #endif
