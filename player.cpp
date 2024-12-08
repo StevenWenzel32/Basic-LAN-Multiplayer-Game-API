@@ -32,9 +32,9 @@ void Player::registerPlayerOut(){
             cerr << "ERROR: IP address failed to be set correctly" << endl;
         }
 //        cout << "ip has been set" << endl;
-        // send your ip addr and port on the broadcast msg to the LAN - udp
+        // send your ip addr on the broadcast msg to the LAN - udp
         registerMsg(this->ip);
-//        cout << "registering msg has been sent" << endl;
+        cout << "You've been registered" << endl;
     } catch (const exception& e){
         cerr << "Exception in registerPlayerOut" << endl;
     }
@@ -54,7 +54,7 @@ void Player::registerPlayerIn(string ip){
     lock_guard<mutex> lock(playersMutex);
     // put the player into the players list
     players.emplace(newPlayer.id, newPlayer);
-cout << "player registered" << endl;
+//cout << "player registered" << endl;
 }
 
 // get a list of avaiable games to join -- instead of query server use clients own list
@@ -94,8 +94,8 @@ void Player::createGameOut(){
     this->game.id = gameId;
     // mark yourself as host 
     this->game.host = true;
-cout << "ip being given for the game host = " << this->ip << endl;
-cout << "game ID = " << this->game.id << endl;
+//cout << "ip being given for the game host = " << this->ip << endl;
+cout << "You started the game with the ID = " << this->game.id << endl;
     // broadcast the creation of the game - udp 
     createGameMsg(gameId, this->ip);
     // start a game in the main thread - prevents the player from using program cmds while in game
@@ -126,7 +126,7 @@ void Player::createGameIn(int gameId, string hostIp){
 
 // connect to the host of a game
 void Player::joinGameOut(int gameId){
-cout << "Attempting to join game" << endl;
+//cout << "Attempting to join game" << endl;
     try {
         // lock the mutex before accessing the shared memory 
         lock_guard<mutex> lock(gamesMutex);
@@ -136,21 +136,17 @@ cout << "Attempting to join game" << endl;
             cout << "The game you want to join doesn't exist" << endl;
             return;
         }
-cout << "about to call connectToHost" << endl;
-cout << "hostIP = " << avaliableGames.at(gameId).hostIp << endl;
+//cout << "about to call connectToHost" << endl;
+//cout << "hostIP = " << avaliableGames.at(gameId).hostIp << endl;
         // connect to host and update the playerSd
-        this->game.playerSd = connectToHost("tcp", avaliableGames.at(gameId).hostIp);
-        if (this->game.playerSd <= 0){
-            cout << "connecting to host failed" << endl;
-        }
-cout << "connected to host on SD = " << this->game.playerSd << endl;
+        connectToHost("tcp", avaliableGames.at(gameId).hostIp, TCP_PORT);
         // update your current game.id
         this->game.id = gameId;
         // update your game list by removing the game you joined
         avaliableGames.erase(gameId);
         // broadcast that the game is full and should be removed from the list of games
         gameFullMsg(gameId);
-cout << "game full msg sent" << endl;
+//cout << "game full msg sent" << endl;
         // start a game in the main thread - prevents the player from using program cmds while in game
         this->game.startGame();
     } catch (const out_of_range& e){
@@ -174,6 +170,7 @@ void Player::unregisterOut(){
     unregisterMsg(this->ip);
     // reset id
     this->id = 0;
+    cout << "You've been unregistered" << endl;
 }
 
 // handles reciving a broadcasted unregisterMsg -- might not actually need a list of players -- need mutexs
@@ -194,27 +191,37 @@ void Player::unregisterIn(string playerIp){
 
 // connect the client player to the host player - client side
 // works with tcp and udp, returns the SD
-int Player::connectToHost(string type, string hostIp){
+void Player::connectToHost(string type, string hostIp, string port){
     // make the addrinfo
-    struct addrinfo* hostinfo = makeAddrinfo(type, hostIp, TCP_PORT);
+    struct addrinfo* hostinfo = makeAddrinfo(type, hostIp, port);
     // update the playerInfo - needed in case of UDP
     this->game.playerinfo = hostinfo;
     // make the socket
-    return makeSocket(hostinfo);
+    int hostSd = makeSocket(hostinfo);
+    // connect to the socket
+    connectSocket(hostSd, hostinfo);
+    // set the socket to be non blocking
+    setNonblocking(hostSd);
+    // update the playerSd
+    this->game.playerSd = hostSd;
 }
 
 // accepts the connection to the client player - host side
 // returns the new SD
 void Player::acceptClientPlayer(){
-cout << "trying to accept TCP connection +++++++" << endl;
+// cout << "trying to accept TCP connection +++++++" << endl;
     // check if a connection was made
     int clientSd = acceptConnection(this->tcpListenSd);
     if (clientSd != -1){
         cout << "A player has joined your game" << endl;
+        // set the socket to be non blocking
+        setNonblocking(clientSd);
         // change the saved playerSd
         this->game.playerSd = clientSd;
+        // send a confirmantion msg to the client player
+        clientJoinMsg();
     }
-cout << "end of accpetClientPlayer " << endl;
+// cout << "end of accpetClientPlayer " << endl;
 }
 
 // set the players ip to the local users ip 
@@ -257,10 +264,8 @@ void Player::setIpAsLocal(){
     freeaddrinfo(res);
 }
 
-
 // msg creation and sending functions
 
-// the port might be unneeded
 // send a broadcast msg to register the player into other players list
 // sending your own ip
 void Player::registerMsg(string ip){
@@ -274,7 +279,7 @@ void Player::registerMsg(string ip){
     snprintf(payload, sizeof(payload), "%s", ip);
     // create the baseMsg
     // 1 = register msg
-    struct baseMsg msg('1', payload, strlen(payload));
+    struct baseMsg msg(1, payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -292,7 +297,7 @@ void Player::unregisterMsg(string ip){
     snprintf(payload, sizeof(payload), "%s", ip);
     // create the baseMsg
     // 2 = "unregister"
-    struct baseMsg msg('2', payload, strlen(payload));
+    struct baseMsg msg(2, payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -303,8 +308,8 @@ void Player::createGameMsg(int gameId, string hostIp){
     char payload[256];
     snprintf(payload, sizeof(payload), "%d:%s", gameId, hostIp.c_str());
     // create the baseMsg
-    // 4 = "createGame"
-    struct baseMsg msg('4', payload, strlen(payload));
+    // 3 = "createGame"
+    struct baseMsg msg(3, payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
@@ -315,35 +320,50 @@ void Player::gameFullMsg(int gameId){
     char payload[32];
     snprintf(payload, sizeof(payload), "%d", gameId);
     // create the baseMsg
-    // 5 = "gameFull"
-    struct baseMsg msg('5', payload, strlen(payload));
+    // 4 = "gameFull"
+    struct baseMsg msg(4, payload, strlen(payload));
     // send the baseMsg
     sendUdpMsg(this->broadSd, msg, this->broadcastAddr);
 }
 
+// broadcast that the game you just joined is full, send gameId
+void Player::clientJoinMsg(){
+    // put the passed in values into an acceptable payload
+    char payload[32];
+    // the msg to send 
+    string notice = "Connected to Host!";
+    snprintf(payload, sizeof(payload), "%s", notice.c_str());
+    // create the baseMsg
+    // 3 = msg/notice to print
+    struct baseMsg msg(3, payload, strlen(payload));
+    // send the baseMsg
+    sendTcpMsg(this->game.playerSd, msg);
+// cout << "sent host connection confirmation" << endl;
+}
+
 // process the messages being sent over broadcast
 void Player::processUdpMsgs(baseMsg* msg){
-cout << "inside process UDP Msgs" << endl;
+//cout << "inside process UDP Msgs" << endl;
     // check the type of the msg
     // register
-    if (msg->type == '1'){
+    if (msg->type == 1){
         // create storage the length of the payload
         string ip(msg->payload.begin(), msg->payload.end());
         // send the payload
         registerPlayerIn(ip);
     } 
     // unregister
-    else if (msg->type == '2'){
+    else if (msg->type == 2){
         // create storage the length of the payload
         string ip(msg->payload.begin(), msg->payload.end());
         // send the payload
         unregisterIn(ip);
     } 
     // create game
-    else if (msg->type == '4'){
+    else if (msg->type == 3){
         // put the whole payload into a string
         string payload(msg->payload.begin(), msg->payload.end());
-cout << "whole payload = " << payload << endl;
+//cout << "whole payload = " << payload << endl;
         // find the delimiter :
         size_t delim = payload.find(':');
         // fill in the gameId
@@ -356,7 +376,7 @@ cout << "whole payload = " << payload << endl;
         createGameIn(stoi(gameId), hostIp);
     } 
     // game full
-    else if (msg->type == '5'){
+    else if (msg->type == 4){
         int gameId;
         memcpy(&gameId, msg->payload.data(), sizeof(int));
         // send the payload
@@ -377,19 +397,30 @@ void Player::listenForUdpMsgs(){
         baseMsg* msg = receiveNonblockingUdp(this->broadSd, this->broadcastAddr);
         // make sure there is a msg 
         if (msg != nullptr){
-cout << "made a new thread to process a UDP msg that was recieved" << endl;
+//cout << "made a new thread to process a UDP msg that was recieved" << endl;
             // make thread and have them run processMsgs() and pass in the msg recieved
             thread* new_thread = new thread(&Player::processUdpMsgs, this, msg);
-cout << "UDP msg thread has been made" << endl;
+//cout << "UDP msg thread has been made" << endl;
             // put thread in vector
             threads.push_back(new_thread);
         }
     }
 }
 
+// listen for msgs on the broadcast - manages the match making
+void Player::listenForTcpConnect(){
+    while (!GlobalFlags::shutdown_flag){
+//cout << "in listen for TCP connect" << endl;
+        // if no player is already connected 
+        if (this->game.playerSd == 0){
+            acceptClientPlayer();
+        }
+    }
+}
+
 // print out the help message to the user
 void Player::printHelp(){
-    cout << "These are the avaliable commands:" << endl;
+    cout << "These are the avaliable commands (This list does not include commands unique to the game):" << endl;
     cout << "   help               - Display this message" << endl;
     cout << "   register           - Registers you into the player list" << endl;
     cout << "   listGames          - Lists the games avaliable to join" << endl;
@@ -399,13 +430,6 @@ void Player::printHelp(){
     cout << "   unregister         - Unregister yourself from the player list" << endl;
     cout << "   exit               - Exit the program" << endl;
     cout << "   rules              - Get the rules of the game" << endl;
-}
-
-// print out the rules of the game
-void Player::printRules(){
-    cout << "These are the rules of the game:" << endl;
-    cout << "Moves are based on the 3x3 grid. 0 0 is the top left corner. Get 3 in a row to win. Host always goes first." << endl;
-    cout << "Type in exit to leave the current game." << endl;
 }
 
 // process the cmds and input given from the user
@@ -447,7 +471,7 @@ void Player::processProgramCmds(string input){
         } else if (tokens[0] == "unregister"){
             unregisterOut();
         } else if (tokens[0] == "rules"){
-            printRules();
+            this->game.printRules();
         } else {
             cerr << "ERROR: Unknown command" << endl;
         }
@@ -469,7 +493,7 @@ void Player::processProgramCmds(string input){
 // when a game gets started through here the game will take over the thread that this has been called in - in this case main
 void Player::inputPrompt(){
     // print out a msg to the terminal prompting user to enter a command
-    cout << "Welcome to high stakes Tic Tac Toe, its high stakes because if you lose everyone knows you're an idiot" << endl;
+    cout << "Welcome to the match making lobby" << endl;
     cout << "When you see this #: it is prompt to enter a command" << endl;
     printHelp();
     // store the input from the player

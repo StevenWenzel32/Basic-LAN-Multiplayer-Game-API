@@ -5,6 +5,7 @@
 
 // libraries
 #include <sstream>
+#include <thread>        // For std::thread
 
 // my files
 #include "basicNetworking.hpp"
@@ -30,10 +31,15 @@ class TicTacToe {
     struct addrinfo* playerinfo = nullptr;
     // the game id
     int id = 0;
+    // if its your turn
+    bool myTurn = false;
 
+    // print out the rules of the game - tic tac toe
+    void printRules();
     // input move 
     // checks if the move is from the host - host is always X, client is always O
-    void processMove(int x, int y);
+    bool processMove(int x, int y, bool host);
+    bool updateGameState(vector<char> payload);
     // go through and check for 3 in a row in the grid for the passed in mark
     void checkForWin(char mark);
     // checks if the passed in mark won -- also checks for a cats game
@@ -50,8 +56,13 @@ class TicTacToe {
     void printGrid();
     // read in the msgs and pass them off for processing
     void readMsg();
-    // prompt the user for their move and feeds it into processMove()
-    void movePrompt();
+    // check for game cmds other than exitGame - currently none exist 
+    void checkGameCmds(vector<string> tokens);
+    // get user input from cin and tokenize it
+    string getUserInput();
+    vector<string> tokenizeInput(string input);
+    // prompt the user for their move and feed it into processMove()
+    bool movePrompt(vector<string> tokens);
     // disconnects the TCP connection with the other player
     void disconnectFromPlayer(int playerSd);
     // leave the game - handles both cases of the calling player being host and client 
@@ -65,11 +76,19 @@ class TicTacToe {
     // send game state - used by host 
     void sendState(char grid[3][3], bool over);
     // send game win msg - to be sent on the local
-    void sendWinMsg();
+    void sendLocalWinMsg();
     // send game lose msg - to be sent on the local
-    void sendLoseMsg();
+    void sendLocalLoseMsg();
     // send cats game msg - to be sent on the local
+    void sendLocalCatsMsg();
+    // send game win msg to the other player - used by host
+    void sendWinMsg();
+    // send game lose msg to the other player - used by host
+    void sendLoseMsg();
+    // send cats game msg to the other player - used by host
     void sendCatsMsg();
+    // send to the client a try again msg - used by host
+    void sendTryAgainMsg();
 };
 
 #endif

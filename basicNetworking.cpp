@@ -137,35 +137,36 @@ void listening(int serverSd, int backlog){
     if (listening == -1) {
         cerr << "Error listening on socket: serverSd - " << serverSd << endl;
     } else {
-        cout << "Host: Waiting for connections..." << endl;
+//        cout << "Host: Waiting for connections..." << endl;
     }
 }
 
+// TCP
 int acceptConnection(int tcpSd){
     // connector's address information can be either IPv4 or IPv6
     struct sockaddr_storage their_addr;
     // size of clients address
     socklen_t their_AddrSize = sizeof(their_addr);
-cout << "before accept call" << endl;
+//cout << "before accept call" << endl;
     // Accept the connection as a new socket
     int newSd = accept(tcpSd, (struct sockaddr *)&their_addr, &their_AddrSize);
-cout << "after accept call" << endl;
+//cout << "after accept call" << endl;
     // check if the connection was made properly
     if (newSd == -1) {
         // check if there are no pending connections -- not a real error 
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-cout << "No pending connections (non-blocking socket)." << endl;
+        // cout << "No pending connections (non-blocking socket)." << endl;
         } else {
             // connect fails
             cerr << "Error accepting connection on socket: serverSd = " << tcpSd << ", error = " << strerror(errno) << endl;
         }
     } else {
-        cout << "Connection made on socket: newSd = " << newSd << endl;
+//        cout << "Connection made on socket: newSd = " << newSd << endl;
     }
     return newSd;
 }
 
-// connect the socket to the server, do error checks, frees addrinfo list - client side
+// connect the socket to the server, do error checks, frees addrinfo list - client side - TCP
 void connectSocket(int clientSd, struct addrinfo* servinfo){
     int connectStatus = connect(clientSd, servinfo->ai_addr, servinfo->ai_addrlen);
     // check for error
@@ -268,7 +269,7 @@ vector<char> serializeBaseMsg(const baseMsg& msg){
     serializedMsg.insert(serializedMsg.end(), reinterpret_cast<char*>(&length), reinterpret_cast<char*>(&length) + sizeof(length));
 
     // put in the msg type 
-    serializedMsg.push_back(msg.type);
+    serializedMsg.insert(serializedMsg.end(), reinterpret_cast<const char*>(&msg.type), reinterpret_cast<const char*>(&msg.type) + sizeof(msg.type));
     // put in the payload
     serializedMsg.insert(serializedMsg.end(), msg.payload.begin(), msg.payload.end());
 
@@ -321,9 +322,10 @@ void sendTcpMsg(int sd, const baseMsg& msg){
         }
         total += bytes_sent;
     }
+//    cout << "msg sent seccusfully" << endl;
 }
 
-// // recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking **********
+// // recieve a UDP msg, reliable delivery, returns the ackNum -- does not wait for a response/non blocking
 // char* receiveReliableUDP(int clientSd, struct addrinfo* servinfo){
 //     // "buffer" for reading in and returning the server ackNum
 //     int ackNum = -1;
@@ -387,7 +389,7 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
     }
     
     // check if the length of the packet has come through
-    if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
+    if (nRead < sizeof(unsigned int) + sizeof(int)){
         // not enough data for the packet header
         return nullptr;
     }
@@ -400,16 +402,16 @@ baseMsg* receiveNonblockingUdp(int sd, struct addrinfo* servinfo){
     packetLength = ntohl(packetLength);
 
     // get the msg type
-    unsigned char packetType = messageBuf[sizeof(unsigned int)];
+    int packetType = messageBuf[sizeof(unsigned int)];
 
     // check if you have the whole packet now
-    if (nRead < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
+    if (nRead < sizeof(unsigned int) + sizeof(int) + packetLength){
         // don't have the whole packet yet
         return nullptr;
     }
 
     // start after the header
-    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(unsigned char);
+    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(int);
 
     // create a baseMsg to return
     baseMsg* msg = new baseMsg(packetType, payloadStart, packetLength);
@@ -439,7 +441,7 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
     }
 
     // check if the header has come through
-    if (nRead < sizeof(unsigned int) + sizeof(unsigned char)){
+    if (nRead < sizeof(unsigned int) + sizeof(int)){
         // not enough data for the packet header
         return nullptr;
     }
@@ -452,16 +454,16 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
     packetLength = ntohl(packetLength);
 
     // get the msg type
-    unsigned char packetType = messageBuf[sizeof(unsigned int)];
+    int packetType = messageBuf[sizeof(unsigned int)];
 
     // check if you have the whole packet now
-    if (nRead < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
+    if (nRead < sizeof(unsigned int) + sizeof(int) + packetLength){
         // don't have the whole packet yet
         return nullptr;
     }
 
     // start after the header
-    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(unsigned char);
+    const char* payloadStart = messageBuf + sizeof(unsigned int) + sizeof(int);
 
     // create a baseMsg to return
     baseMsg* msg = new baseMsg(packetType, payloadStart, packetLength);
@@ -472,7 +474,7 @@ baseMsg* receiveNonblockingUdp(int sd, struct sockaddr_in addrinfo){
 // receive msg, blocking/stop and wait - tcp
 baseMsg receiveBlockingTcp(int sd){
     // define the header size
-    const size_t HEADER_SIZE = sizeof(unsigned int) + sizeof(unsigned char);
+    const size_t HEADER_SIZE = sizeof(unsigned int) + sizeof(int);
     // to store the msg header
     char headerBuffer[HEADER_SIZE];
 
@@ -487,7 +489,9 @@ baseMsg receiveBlockingTcp(int sd){
             break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
-            break;
+            // return an empty baseMsg
+            struct baseMsg msg(-1);
+            return msg;
         }
         // add the current bytes read to the total
         totalRead += nRead;
@@ -495,7 +499,7 @@ baseMsg receiveBlockingTcp(int sd){
 
     // get the header info
     unsigned int payloadLength = 0;
-    unsigned char type = 0;
+    int type = 0;
     
     // put the header info into their vars
     memcpy(&payloadLength, headerBuffer, sizeof(payloadLength));
@@ -516,7 +520,9 @@ baseMsg receiveBlockingTcp(int sd){
             break; 
         } else if (nRead == 0) {
             cerr << "Client closed the connection" << endl;
-            break;
+            // return an empty baseMsg
+            struct baseMsg msg(-1);
+            return msg;
         }
         // add the current bytes read to the total
         totalRead += nRead;
@@ -528,67 +534,72 @@ baseMsg receiveBlockingTcp(int sd){
 }
 
 // receive msg, non-blocking does not wait - tcp
-baseMsg* receiveNonblockingTcp(int sd){
-    // "buffer" for reading in the server response
-    char readInBuffer[BUFFER_SIZE];
-    // holds the incomplete data until whole packet comes through
-    string incompletePacket;
-    // count the # of bytes read
-    int nRead;
+baseMsg receiveNonblockingTcp(int sd){
+    // define the header size
+    const size_t HEADER_SIZE = sizeof(unsigned int) + sizeof(int);
+    // to store the msg header
+    char headerBuffer[HEADER_SIZE];
 
-    // while there is data to read in the socket
-    while ((nRead = recv(sd, &readInBuffer, BUFFER_SIZE - 1, 0)) > 0){
-        // null terminate th buffer to help other functions work right
-        readInBuffer[nRead] = '\0';
-        // add what is read to the request
-        incompletePacket.append(readInBuffer, nRead);
-
-        // grab the data sent and put into packets
-        while (true){
-            // check if the length of the packet has come through
-            if (incompletePacket.size() < sizeof(unsigned int) + sizeof(unsigned char)){
-                // not enough data for the packet header
-                break;
+    // count the bytes read
+    int totalRead = 0;
+    // read in the header
+    while (totalRead < HEADER_SIZE){
+        // read the data from the socket
+        int nRead = recv(sd, headerBuffer + totalRead, HEADER_SIZE - totalRead, 0);
+        if (nRead == -1){
+            if (errno == EAGAIN || errno == EWOULDBLOCK){
+                // no data do nothing
+                // return empty base msg
+                return baseMsg(-1);
+            } else {
+                cerr << "Error reading from TCP non blocking socket: SD = " << sd << ", errno = " << errno << endl;
+                return baseMsg(-1);
             }
-
-            // to hold the packet length
-            unsigned int packetLength = 0;
-            // copy the first 4 bytes into the packetLength
-            memcpy(&packetLength, incompletePacket.data(), sizeof(packetLength));
-            // convert the byte order from network into host for type long - no conversion before send
-            packetLength = ntohl(packetLength);
-
-            // check if you have the whole packet now
-            if (incompletePacket.size() < sizeof(unsigned int) + sizeof(unsigned char) + packetLength){
-                // don't have the whole packet yet
-                break;
-            }
-
-            // get the packet type -- the byte after the length
-            unsigned char packetType = incompletePacket[sizeof(unsigned int)];
-            // get the payload -- everything after the length + type - takes in (start, end)
-            vector<char> packetPayload(incompletePacket.begin() + sizeof(unsigned int) + sizeof(unsigned char), incompletePacket.begin() + sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
-            // make the baseMsg to return
-            baseMsg* msg = new baseMsg(packetType, packetPayload.data(), packetPayload.size());
-            // remove the full packet from the buffer
-            incompletePacket.erase(0, sizeof(unsigned int) + sizeof(unsigned char) + packetLength);
-
-            // process the packet received
-            return msg;
+        } else if (nRead == 0) {
+            cerr << "Client closed the connection" << endl;
+            // return empty base msg
+            return baseMsg(-2);
         }
+        // add the current bytes read to the total
+        totalRead += nRead;
     }
 
-    // check for receive errors
-    if (nRead == -1){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // do nothing simply nothing to read yet
-        } else {
-            cerr << "Error reading from TCP non blocking socket: SD = " << sd << endl; 
-        }
-    } else if (nRead == 0) {
-        cerr << "Client closed the connection" << endl;
-    }
+    // get the header info
+    unsigned int payloadLength = 0;
+    int type = 0;
+    
+    // put the header info into their vars
+    memcpy(&payloadLength, headerBuffer, sizeof(payloadLength));
+    memcpy(&type, headerBuffer + sizeof(payloadLength), sizeof(type));
+    
+    // convert to host byte order -- no switching done on other side 
+    payloadLength = ntohl(payloadLength);
 
-    // if you get here there is nothing
-    return nullptr;
+    // read in the payload 
+    vector<char> payload(payloadLength);
+    // reset the totalRead - reuse it!
+    totalRead = 0;
+    // read in the whole payload
+    while(totalRead < payloadLength){
+        int nRead = recv(sd, payload.data() + totalRead, payloadLength - totalRead, 0);
+        if (nRead == -1){
+            if (errno == EAGAIN || errno == EWOULDBLOCK){
+                // no data do nothing
+                // return empty base msg
+                return baseMsg(-1);
+            } else {
+                cerr << "Error reading from TCP non blocking socket: SD = " << sd << ", errno = " << errno << endl;
+                return baseMsg(-1);
+            }
+        } else if (nRead == 0) {
+            cerr << "Client closed the connection" << endl;
+            // return empty base msg
+            return baseMsg(-2);
+        }
+        // add the current bytes read to the total
+        totalRead += nRead;
+    }
+//cout << "end of receive" << endl;
+    // create a new baseMsg
+    return baseMsg(type, payload.data(), payload.size());
 }

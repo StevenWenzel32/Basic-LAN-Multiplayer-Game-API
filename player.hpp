@@ -105,15 +105,13 @@ class Player {
 
     // helper functions for the above core functions
     // connect the client player to the host player - client side
-    int connectToHost(string type, string hostIp);
+    void connectToHost(string type, string hostIp, string port);
     // accepts the connection to the client player - host side
     void acceptClientPlayer();
     // set the players ip to the local users ip 
     void setIpAsLocal();
     // print out the commands for this program - not the game!
     void printHelp();
-    // print out the rules of the game - tic tac toe
-    void printRules();
 
     // process the messages being sent over broadcast
     void processUdpMsgs(baseMsg* msg);
@@ -123,6 +121,8 @@ class Player {
     void processProgramCmds(string input);
     // listen for msgs on the broadcast - manages the match making
     void listenForUdpMsgs();
+    // listen for TCP connection from other players
+    void listenForTcpConnect();
 
     // msg creation and sending funcs
     // the port might be unneeded
@@ -136,6 +136,8 @@ class Player {
     void createGameMsg(int gameId, string hostIp);
     // broadcast that the game you just joined is full, send gameId
     void gameFullMsg(int gameId);
+    // send a TCP msg to the client saying that you're connected to them now
+    void clientJoinMsg();
 
 //    protected:
     // vars related to the players device

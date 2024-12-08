@@ -16,6 +16,7 @@ int main (int argc, char* argv[]) {
     // Set up signal handling for SIGINT and SIGTERM so that the client can shutdown nicely
     signal(SIGINT, GlobalFlags::signalHandler);
     signal(SIGTERM, GlobalFlags::signalHandler);
+    signal(SIGTSTP, GlobalFlags::signalHandler);
 
     // create a player - once the player starts a game a game object will be created
     Player player;
@@ -52,24 +53,29 @@ int main (int argc, char* argv[]) {
     // get the info 
     struct addrinfo* tcpinfo = makeAddrinfo("tcp", TCP_PORT);
     player.tcpListenSd = makeSocket(tcpinfo);
+//cout << "TCP listen SD = " << player.tcpListenSd << endl;
     setSocketReuse(player.tcpListenSd);
-//    setNonblocking(player.tcpListenSd);
+    setNonblocking(player.tcpListenSd);
     bindSocket(player.tcpListenSd, tcpinfo);
     listening(player.tcpListenSd, BACKLOG);
-cout << "socket setup done" << endl;
+//cout << "socket setup done" << endl;
 
     // Thread for listening for broadcast msgs -- non blocking -- always running until shutdown
     thread udpListenThread(&Player::listenForUdpMsgs, &player);
-cout << "now listening on broadcast on = thread 1" << endl;
+//cout << "now listening on broadcast on = thread 1" << endl;
+    // thread for listening to tcp msgs -- non blocking -- always running until shutdown
+    thread tcpListenThread(&Player::listenForTcpConnect, &player);
+//cout << "now listening for TCP connections from players on = thread 2" << endl;
 
-cout << "can now send msgs on the main thread = thread 3" << endl;
+//cout << "can now send msgs on the main thread = thread 3" << endl;
     // loop until 
     // // main thread - handles the program cmds most end up calling a send msg func -- starts the game thread 
     player.inputPrompt();
-cout << "main thread is now done sending msgs" << endl;
+//cout << "main thread is now done sending msgs" << endl;
     
     // make sure the listening threads have ended before closing
     udpListenThread.join();
+    tcpListenThread.join();
 
     // once shutting down join all the threads
     for (thread* thread : player.threads) {
@@ -80,7 +86,7 @@ cout << "main thread is now done sending msgs" << endl;
     }
     player.threads.clear();
 
-cout << "closing sockets in main" << endl;
+//cout << "closing sockets in main" << endl;
     // close the broadcast socket used for listening and sending
     closeSocket(player.broadSd);
     closeSocket(player.tcpListenSd);
